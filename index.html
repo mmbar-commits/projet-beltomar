@@ -1950,14 +1950,167 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
       sh.rotation.x = -Math.PI / 2; sh.position.y = 0.025;
       root.add(sh);
     }
-    const geo = new THREE.PlaneGeometry(w, height);
+    // Subdivided Puppet Mesh (20x32 vertices) for real-time 3D leg stride, knee lift, arm swing, breathing & head motion!
+    const segX = key === 'family' ? 28 : 16;
+    const segY = 28;
+    const geo = new THREE.PlaneGeometry(w, height, segX, segY);
     geo.translate(0, height / 2, 0);
+    const posArr = geo.attributes.position.array;
+    const uvArr = geo.attributes.uv.array;
+    const basePos = new Float32Array(posArr);
+    const baseUV = new Float32Array(uvArr);
+
     const card = new THREE.Mesh(geo, getPhotoHumanMat(key));
-    if (flipX) card.scale.x = -1;
     card.castShadow = true;
     card.receiveShadow = true;
     root.add(card);
-    return { root, card };
+    return { root, card, key, w, height, basePos, baseUV, flipSign: flipX ? -1 : 1, curFlip: flipX ? -1 : 1 };
+  }
+
+  // Real-time Live2D / 2.5D Puppet Deformation for Natural Human Walking & Living Idle Animation!
+  function deformPhotoHuman(p, elapsed, isWalking, stridePhase) {
+    const pos = p.card.geometry.attributes.position.array;
+    const base = p.basePos;
+    const uv = p.baseUV;
+    const vCount = base.length / 3;
+    const H = p.height;
+    const ph = p.phase || 0;
+
+    if (p.key === 'family') {
+      // 3 Independent Articulated People inside family.png: Father (u=0..0.38), Mother (0.38..0.68), Child (0.68..1.00)!
+      const members = [
+        { uMin: 0.00, uMax: 0.38, uMid: 0.19, hipV: 0.48, shV: 0.78, sp: stridePhase,        amp: 1.0  },
+        { uMin: 0.38, uMax: 0.68, uMid: 0.53, hipV: 0.44, shV: 0.72, sp: stridePhase + 0.85, amp: 0.88 },
+        { uMin: 0.68, uMax: 1.00, uMid: 0.84, hipV: 0.31, shV: 0.52, sp: stridePhase * 1.38, amp: 0.72 }
+      ];
+      for (let i = 0; i < vCount; i++) {
+        const u = uv[i * 2], v = uv[i * 2 + 1];
+        let x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2];
+        const m = u < 0.38 ? members[0] : (u < 0.68 ? members[1] : members[2]);
+        const s = Math.sin(m.sp), c = Math.cos(m.sp);
+        const du = (u - m.uMid) / ((m.uMax - m.uMin) * 0.5); // -1..+1 within this family member
+        // Leg stride (left vs right side of each person)
+        if (v < m.hipV) {
+          const legWeight = Math.min(1, (m.hipV - v) / m.hipV);
+          const sideSign = Math.tanh(du * 4.5); // Smooth left (-1) vs right (+1) leg separation!
+          const phaseSide = s * sideSign;
+          const lift = Math.max(0, c * sideSign) * legWeight * 0.065 * m.amp;
+          const kneeBend = Math.sin(legWeight * Math.PI) * Math.max(0, c * sideSign) * 0.08 * m.amp;
+          z += (phaseSide * 0.19 * legWeight + kneeBend) * m.amp;
+          y += lift;
+          x += phaseSide * 0.022 * legWeight * m.amp;
+        } else {
+          // Torso bounce, hip sway, gentle arm swing & head stabilization
+          const bounce = Math.abs(s) * 0.026 * m.amp;
+          y += bounce;
+          x += s * 0.018 * m.amp * Math.min(1, (v - m.hipV) / 0.25);
+          // Arms on outer edges of each member
+          if (v < m.shV && Math.abs(du) > 0.45) {
+            const armW = Math.min(1, (Math.abs(du) - 0.45) / 0.45) * Math.sin(((v - m.hipV) / Math.max(0.1, m.shV - m.hipV)) * Math.PI);
+            const armSide = du < 0 ? -1 : 1;
+            z += -s * armSide * 0.13 * armW * m.amp;
+          }
+          // Subtle head look & nod
+          if (v > m.shV) {
+            const hw = Math.min(1, (v - m.shV) / 0.16);
+            z += Math.sin(elapsed * 1.1 + ph + m.uMid * 5) * 0.025 * hw;
+          }
+        }
+        pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
+      }
+    } else if (isWalking) {
+      // Single Walking Person: True 3D Opposite-Phase Leg Stride, Knee Lift, Counter-Phase Arm Swing, Torso Sway & Head Bob!
+      const s = Math.sin(stridePhase), c = Math.cos(stridePhase);
+      const bounce = Math.abs(s) * 0.032;
+      const breath = Math.sin(elapsed * 2.4 + ph) * 0.008;
+      const headTurn = Math.sin(elapsed * 0.9 + ph) * 0.028;
+
+      for (let i = 0; i < vCount; i++) {
+        const u = uv[i * 2], v = uv[i * 2 + 1];
+        let x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2];
+        const du = (u - 0.5) * 2.0; // -1 (left edge) .. +1 (right edge)
+
+        if (v < 0.49) {
+          // Anatomical legs + feet (y = 0 at shoe sole, y = 0.49 at hip!)
+          const legW = Math.min(1, (0.49 - v) / 0.49); // 0 at hip -> 1 at foot
+          const side = Math.tanh(du * 5.0);            // Smooth -1 left leg / +1 right leg
+          const swing = s * side;
+          const forwardLift = Math.max(0, c * side);   // Lifts swinging foot off ground!
+          const kneeArc = Math.sin(legW * Math.PI) * forwardLift * 0.095;
+          z += swing * 0.24 * legW + kneeArc;
+          y += forwardLift * 0.075 * legW + bounce * (1.0 - legW);
+          x += swing * 0.032 * legW + s * 0.016 * (1.0 - legW);
+        } else {
+          // Upper body: hip sway + counter-swinging arms + breathing + natural head turn!
+          const upperT = Math.min(1, (v - 0.49) / 0.34);
+          y += bounce + (v > 0.56 && v < 0.82 ? breath * Math.sin(((v - 0.56) / 0.26) * Math.PI) : 0);
+          x += s * 0.024 * Math.sin(upperT * Math.PI * 0.75);
+          // Slight natural torso twist around vertical axis
+          z += -s * du * 0.035 * upperT;
+
+          // Counter-phase arm swing on outer left & right sleeve/hand zones (v = 0.46..0.79, |du| > 0.38)
+          if (v < 0.80 && Math.abs(du) > 0.36) {
+            const armLat = Math.min(1, (Math.abs(du) - 0.36) / 0.45);
+            const armVert = Math.min(1, (0.80 - v) / 0.26); // 0 at shoulder -> 1 at hand
+            const armSide = du < 0 ? -1 : 1;
+            z += -s * armSide * 0.16 * armLat * armVert;
+            y += Math.max(0, -s * armSide) * 0.028 * armLat * armVert;
+          }
+          // Natural living head look & subtle tilt
+          if (v > 0.82) {
+            const hw = Math.min(1, (v - 0.82) / 0.15);
+            z += headTurn * du * hw;
+            x += Math.sin(elapsed * 0.7 + ph) * 0.012 * hw;
+          }
+        }
+        pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
+      }
+    } else {
+      // Standing / Working Person (Afriquia Pump Attendants, Chefs, Café/Shop Guests): Living Breathing, Weight Shift, Arm Gesture & Head Glance!
+      const sway = Math.sin(elapsed * 0.85 + ph);
+      const breath = Math.sin(elapsed * 1.85 + ph);
+      const glance = Math.sin(elapsed * 0.62 + ph * 1.7);
+      const workAct = Math.sin(elapsed * 2.1 + ph);
+      const isWorker = (p.key === 'afriquia' || p.key === 'chef');
+
+      for (let i = 0; i < vCount; i++) {
+        const u = uv[i * 2], v = uv[i * 2 + 1];
+        let x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2];
+        const du = (u - 0.5) * 2.0;
+
+        // Feet remain 100% planted (v=0 -> weight=0), body gently shifts weight smoothly upward!
+        const plantW = Math.min(1, Math.max(0, (v - 0.08) / 0.45));
+        x += sway * 0.026 * plantW * plantW;
+        z += Math.cos(elapsed * 0.85 + ph) * 0.015 * plantW;
+
+        // Natural chest breathing (v = 0.55..0.82)
+        if (v > 0.54 && v < 0.84) {
+          const bw = Math.sin(((v - 0.54) / 0.30) * Math.PI);
+          y += breath * 0.010 * bw;
+          z += breath * 0.014 * bw * (1.0 - Math.abs(du) * 0.4);
+        }
+
+        // Subtle gesturing / working arm & hand movement (Afriquia attendant / Chef / Visitor!)
+        if (v > 0.42 && v < 0.78 && Math.abs(du) > 0.34) {
+          const aw = Math.min(1, (Math.abs(du) - 0.34) / 0.46) * Math.min(1, (0.78 - v) / 0.24);
+          const gestAmp = isWorker ? 0.068 : 0.030;
+          const armDir = du < 0 ? 1 : -0.6;
+          z += workAct * gestAmp * aw * armDir;
+          y += Math.max(0, workAct) * gestAmp * 0.45 * aw;
+        }
+
+        // Living head turn & subtle friendly nod (v > 0.81)
+        if (v > 0.81) {
+          const hw = Math.min(1, (v - 0.81) / 0.16);
+          z += glance * du * 0.042 * hw;
+          x += glance * 0.018 * hw;
+          y += Math.sin(elapsed * 1.2 + ph) * 0.008 * hw;
+        }
+
+        pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
+      }
+    }
+    p.card.geometry.attributes.position.needsUpdate = true;
   }
 
   function populateHumansAndFamilies(g, M) {
@@ -1965,13 +2118,13 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
       const ph = createPhotoHuman(key, height, M.contactAO, flipX);
       ph.root.position.set(x1, y, z1);
       g.add(ph.root);
-      animatedPeople.push({ type: 'photo_walk', root: ph.root, card: ph.card, x1, z1, x2, z2, y, speed, t: phase, dir: 1, phase: Math.random() * 6.28 });
+      animatedPeople.push({ type: 'photo_walk', ...ph, x1, z1, x2, z2, y, speed, t: phase, dir: 1, phase: Math.random() * 6.28 });
     }
     function addPhotoStatic(key, x, y, z, height = 1.78, flipX = false) {
       const ph = createPhotoHuman(key, height, M.contactAO, flipX);
       ph.root.position.set(x, y, z);
       g.add(ph.root);
-      animatedPeople.push({ type: 'photo_static', root: ph.root, card: ph.card, y, phase: Math.random() * 6.28 });
+      animatedPeople.push({ type: 'photo_static', ...ph, y, phase: Math.random() * 6.28 });
     }
 
     // 1. REAL MOROCCAN FAMILIES strolling along Galerie Commerciale, Cour Palmiers & toward Mini Brahim / Oasis Café!
@@ -3163,7 +3316,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     B.addBox(0.1, y0, 13.8, 2.4, y1 - 0.2, 16.2, M.inox, { collide: 'ssol' });
     B.addBox(7.3, y0, 2.4, 8.1, y0 + 2.1, 6.2, M.steel, { collide: 'ssol' });
     B.addBox(7.3, y0, 12.0, 8.1, y0 + 2.1, 15.8, M.steel, { collide: 'ssol' });
-    [3.8, 8.5, 13.0].forEach(lz => B.addBox(1.0, y1 - 0.04, lz - 0.16, 6.8, y1, lz + 0.16, M.ledWhite));
+    [3.8, 13.0].forEach(lz => B.addBox(1.0, y1 - 0.04, lz - 0.16, 6.8, y1, lz + 0.16, M.ledWhite));
 
     // Stair 2: Dark Kitchen U-Staircase — FIXED to reach 100% flush to Sous-sol floor (Y = -3.40m)!
     const stepsDK = 10;
@@ -3984,12 +4137,29 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
         else if (p.t <= 0) { p.t = 0; p.dir = 1; }
         const cx = p.x1 + (p.x2 - p.x1) * p.t;
         const cz = p.z1 + (p.z2 - p.z1) * p.t;
-        const bob = Math.abs(Math.sin(elapsed * 5.2 + i * 1.4)) * 0.026;
-        p.root.position.set(cx, p.y + bob, cz);
-        // Smooth cylindrical Y-axis billboarding (faces viewer upright like Lumion/V-Ray ArchViz people!)
-        p.card.rotation.y = Math.atan2(camX - cx, camZ - cz);
+        p.root.position.set(cx, p.y, cz);
+
+        // Direction-aware orientation: face camera cleanly, slightly angled toward walk vector, and mirror left/right naturally!
+        const toCamX = camX - cx, toCamZ = camZ - cz;
+        const camYaw = Math.atan2(toCamX, toCamZ);
+        const vx = ((p.x2 - p.x1) / dist) * p.dir;
+        const vz = ((p.z2 - p.z1) / dist) * p.dir;
+        // Cross product tells if person walks to viewer's right (>0) or left (<0), with smooth deadzone so no flicker!
+        const screenRight = toCamZ * vx - toCamX * vz;
+        if (Math.abs(screenRight) > 0.14) p.curFlip = screenRight > 0 ? 1 : -1;
+        const flip = p.curFlip || 1;
+        p.card.scale.x = flip;
+        p.card.rotation.y = camYaw + flip * 0.22; // Subtle natural 3/4 walking angle!
+
+        // Real-time articulated 3D leg stride, knee lift, arm swing & torso motion!
+        const stridePhase = elapsed * (4.6 + p.speed * 1.15) + p.phase;
+        deformPhotoHuman(p, elapsed, true, stridePhase);
       } else if (p.type === 'photo_static') {
-        p.card.rotation.y = Math.atan2(camX - p.root.position.x, camZ - p.root.position.z);
+        const cx = p.root.position.x, cz = p.root.position.z;
+        p.card.scale.x = p.flipSign || 1;
+        p.card.rotation.y = Math.atan2(camX - cx, camZ - cz);
+        // Living idle animation (breathing, weight shift, subtle arm gestures & head glances!)
+        deformPhotoHuman(p, elapsed, false, 0);
       }
     }
   }
