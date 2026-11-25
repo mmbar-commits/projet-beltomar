@@ -1241,6 +1241,83 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
   // =========================================================================
   // REALISTIC EVERYDAY MOROCCAN VEHICLES (Family Hatchback, Sedan, SUV & Utility Delivery Van / Camionnette!)
   // =========================================================================
+  // High-Resolution Photorealistic Automotive Detail Textures (Headlights, Grille, Taillights, Alloy Wheel, Moroccan Plate!)
+  let autoTexCache = null;
+  function getAutoDetailTextures() {
+    if (autoTexCache) return autoTexCache;
+    const mk = (w, h, fn) => {
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      fn(c.getContext('2d'), w, h);
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+    };
+    const headlight = mk(256, 128, (ctx, w, h) => {
+      ctx.fillStyle = '#181c22'; ctx.fillRect(0, 0, w, h);
+      const g = ctx.createLinearGradient(0, 0, w, h);
+      g.addColorStop(0, '#cfd8e3'); g.addColorStop(0.5, '#64748b'); g.addColorStop(1, '#1e293b');
+      ctx.fillStyle = g; ctx.fillRect(8, 8, w - 16, h - 16);
+      // Dual chrome projector bowls + crisp white DRL LED strip
+      [76, 178].forEach(cx => {
+        const rg = ctx.createRadialGradient(cx, 62, 6, cx, 62, 34);
+        rg.addColorStop(0, '#ffffff'); rg.addColorStop(0.45, '#e2eefc'); rg.addColorStop(0.85, '#334155'); rg.addColorStop(1, '#0f172a');
+        ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(cx, 62, 34, 0, Math.PI * 2); ctx.fill();
+      });
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.moveTo(16, 108); ctx.lineTo(w - 20, 108); ctx.lineTo(w - 14, 24); ctx.stroke();
+    });
+    const taillight = mk(256, 128, (ctx, w, h) => {
+      ctx.fillStyle = '#2b090c'; ctx.fillRect(0, 0, w, h);
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, '#dc2626'); g.addColorStop(0.55, '#991b1b'); g.addColorStop(1, '#450a0a');
+      ctx.fillStyle = g; ctx.fillRect(6, 6, w - 12, h - 12);
+      ctx.fillStyle = '#f8fafc'; ctx.fillRect(24, 72, 74, 26); // Reverse lamp
+      ctx.fillStyle = '#f59e0b'; ctx.fillRect(108, 72, 62, 26); // Indicator lamp
+      ctx.strokeStyle = '#ff4d4d'; ctx.lineWidth = 8; ctx.strokeRect(18, 18, w - 36, 42);
+    });
+    const grille = mk(256, 96, (ctx, w, h) => {
+      ctx.fillStyle = '#111318'; ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#242932';
+      for (let y = 10; y < h - 8; y += 14) ctx.fillRect(8, y, w - 16, 6);
+      ctx.fillStyle = '#d1d5db'; ctx.fillRect(10, 42, w - 20, 8); // Chrome trim bar
+      ctx.beginPath(); ctx.arc(w / 2, 46, 16, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.arc(w / 2, 46, 11, 0, Math.PI * 2); ctx.fill();
+    });
+    const plate = mk(256, 64, (ctx, w, h) => {
+      ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#111827'; ctx.lineWidth = 5; ctx.strokeRect(3, 3, w - 6, h - 6);
+      ctx.fillStyle = '#111827'; ctx.font = 'bold 34px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('48219 | A | 6', w / 2, h / 2 + 2);
+    });
+    const wheelFace = mk(256, 256, (ctx, w, h) => {
+      ctx.fillStyle = '#16181c'; ctx.fillRect(0, 0, w, h);
+      // Rubber tire sidewall
+      ctx.strokeStyle = '#252830'; ctx.lineWidth = 22;
+      ctx.beginPath(); ctx.arc(128, 128, 112, 0, Math.PI * 2); ctx.stroke();
+      // Dark brake disc cavity
+      ctx.fillStyle = '#1e2229'; ctx.beginPath(); ctx.arc(128, 128, 86, 0, Math.PI * 2); ctx.fill();
+      // Machined metallic brake rotor + red/silver caliper
+      ctx.strokeStyle = '#64748b'; ctx.lineWidth = 14; ctx.beginPath(); ctx.arc(128, 128, 56, 0, Math.PI * 2); ctx.stroke();
+      // 5 twin-spoke metallic alloy rim
+      ctx.strokeStyle = '#d8dee6'; ctx.lineWidth = 14; ctx.lineCap = 'round';
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        ctx.beginPath(); ctx.moveTo(128 + Math.cos(a) * 20, 128 + Math.sin(a) * 20);
+        ctx.lineTo(128 + Math.cos(a) * 84, 128 + Math.sin(a) * 84); ctx.stroke();
+      }
+      ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 8; ctx.beginPath(); ctx.arc(128, 128, 84, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#334155'; ctx.beginPath(); ctx.arc(128, 128, 20, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e2e8f0'; ctx.beginPath(); ctx.arc(128, 128, 7, 0, Math.PI * 2); ctx.fill();
+    });
+    autoTexCache = {
+      headMat: new THREE.MeshStandardMaterial({ map: headlight, emissiveMap: headlight, emissive: 0xfff4d6, emissiveIntensity: 0.45, roughness: 0.08, metalness: 0.2 }),
+      tailMat: new THREE.MeshStandardMaterial({ map: taillight, emissiveMap: taillight, emissive: 0xff2222, emissiveIntensity: 0.55, roughness: 0.14 }),
+      grilleMat: new THREE.MeshStandardMaterial({ map: grille, roughness: 0.35, metalness: 0.65 }),
+      plateMat: new THREE.MeshStandardMaterial({ map: plate, roughness: 0.4 }),
+      wheelFaceMat: new THREE.MeshStandardMaterial({ map: wheelFace, roughness: 0.38, metalness: 0.55 })
+    };
+    return autoTexCache;
+  }
+
+  const vanEntries = [];
   function createRealisticVehicle(colorHex, mode = 'sedan', aoMat = null) {
     // Support legacy boolean arg (true -> 'suv', false -> 'sedan') as well as 'hatch' | 'sedan' | 'suv' | 'van'
     const vType = typeof mode === 'boolean' ? (mode ? 'suv' : 'sedan') : mode;
@@ -1260,9 +1337,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     const chromeMat = new THREE.MeshStandardMaterial({ color: 0xdbe2ea, roughness: 0.14, metalness: 0.92, envMapIntensity: 1.8 });
     const rimMat = new THREE.MeshStandardMaterial({ color: isVan ? 0x9aa2ac : 0xd2d8df, roughness: 0.22, metalness: 0.86 });
     const tireMat = new THREE.MeshStandardMaterial({ color: 0x17191d, roughness: 0.88 });
-    const headMat = new THREE.MeshStandardMaterial({ color: 0xfff8e6, emissive: 0xfff3d0, emissiveIntensity: 0.45, roughness: 0.10, metalness: 0.2 });
-    const tailMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, emissive: 0xdc2626, emissiveIntensity: 0.55, roughness: 0.18 });
-    const plateMat = new THREE.MeshStandardMaterial({ color: 0xf4f6f8, roughness: 0.45 });
+    const AT = getAutoDetailTextures();
+    const headMat = AT.headMat, tailMat = AT.tailMat, grilleMat = AT.grilleMat, plateMat = AT.plateMat, wheelFaceMat = AT.wheelFaceMat;
 
     // Ground Contact Shadow AO underneath the vehicle
     const aoW = isVan ? 2.65 : (isSUV ? 2.55 : 2.35);
@@ -1395,7 +1471,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     }
 
     // Front Radiator Grille + Chrome Horizontal Slats + Bumpers + Headlights + Taillights + Moroccan Plates!
-    const grille = new THREE.Mesh(new THREE.BoxGeometry(1.14, isVan ? 0.34 : 0.24, 0.08), trimMat);
+    const grille = new THREE.Mesh(new THREE.BoxGeometry(1.14, isVan ? 0.34 : 0.24, 0.08), grilleMat);
     grille.position.set(0, hLight - 0.06, zFront + 0.02); grp.add(grille);
     const chromeBar = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.035, 0.09), chromeMat);
     chromeBar.position.set(0, hLight - 0.02, zFront + 0.03); grp.add(chromeBar);
@@ -1432,9 +1508,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
       const piv = new THREE.Group();
       piv.position.set(x, wheelR, z);
       const wGrp = new THREE.Group();
-      wGrp.add(new THREE.Mesh(tireGeo, tireMat));
-      wGrp.add(new THREE.Mesh(rimGeo, rimMat));
-      wGrp.add(new THREE.Mesh(hubGeo, trimMat));
+      wGrp.add(new THREE.Mesh(tireGeo, [tireMat, wheelFaceMat, wheelFaceMat]));
       if (!isVan) {
         for (let k = 0; k < 3; k++) {
           const sp = new THREE.Mesh(spokeGeo, trimMat);
@@ -1448,7 +1522,9 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
       if (isFront) frontPivots.push(piv);
     });
 
-    return { grp, wheels, frontPivots };
+    const out = { grp, wheels, frontPivots, vType, colorHex };
+    if (isVan) vanEntries.push(out);
+    return out;
   }
 
   // =========================================================================
@@ -1919,241 +1995,50 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     return { root, bodyGrp, legL, legR, armL, armR, headGrp };
   }
 
-  const photoHumanSpecs = {
-    afriquia:   { path: 'assets/people/afriquia.png',   aspect: 0.347 },
-    family:     { path: 'assets/people/family.png',     aspect: 0.925 },
-    man_walk:   { path: 'assets/people/man_walk.png',   aspect: 0.336 },
-    woman_walk: { path: 'assets/people/woman_walk.png', aspect: 0.428 },
-    office:     { path: 'assets/people/office.png',     aspect: 0.349 },
-    chef:       { path: 'assets/people/chef.png',       aspect: 0.314 }
-  };
-  const photoHumanMats = {};
-  function getPhotoHumanMat(key) {
-    if (!photoHumanMats[key]) {
-      const tex = new THREE.TextureLoader().load(photoHumanSpecs[key].path);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.anisotropy = 8;
-      photoHumanMats[key] = new THREE.MeshStandardMaterial({
-        map: tex, alphaTest: 0.42, roughness: 0.88, metalness: 0.0, side: THREE.DoubleSide
-      });
-    }
-    return photoHumanMats[key];
-  }
-
-  function createPhotoHuman(key, height = 1.78, aoMat = null, flipX = false) {
-    const spec = photoHumanSpecs[key];
-    const w = height * spec.aspect;
-    const root = new THREE.Group();
-    if (aoMat) {
-      const shW = key === 'family' ? w * 1.12 : Math.max(0.75, w * 1.25);
-      const sh = new THREE.Mesh(new THREE.PlaneGeometry(shW, 0.72), aoMat);
-      sh.rotation.x = -Math.PI / 2; sh.position.y = 0.025;
-      root.add(sh);
-    }
-    // Subdivided Puppet Mesh (20x32 vertices) for real-time 3D leg stride, knee lift, arm swing, breathing & head motion!
-    const segX = key === 'family' ? 28 : 16;
-    const segY = 28;
-    const geo = new THREE.PlaneGeometry(w, height, segX, segY);
-    geo.translate(0, height / 2, 0);
-    const posArr = geo.attributes.position.array;
-    const uvArr = geo.attributes.uv.array;
-    const basePos = new Float32Array(posArr);
-    const baseUV = new Float32Array(uvArr);
-
-    const card = new THREE.Mesh(geo, getPhotoHumanMat(key));
-    card.castShadow = true;
-    card.receiveShadow = true;
-    root.add(card);
-    return { root, card, key, w, height, basePos, baseUV, flipSign: flipX ? -1 : 1, curFlip: flipX ? -1 : 1 };
-  }
-
-  // Real-time Live2D / 2.5D Puppet Deformation for Natural Human Walking & Living Idle Animation!
-  function deformPhotoHuman(p, elapsed, isWalking, stridePhase) {
-    const pos = p.card.geometry.attributes.position.array;
-    const base = p.basePos;
-    const uv = p.baseUV;
-    const vCount = base.length / 3;
-    const H = p.height;
-    const ph = p.phase || 0;
-
-    if (p.key === 'family') {
-      // 3 Independent Articulated People inside family.png: Father (u=0..0.38), Mother (0.38..0.68), Child (0.68..1.00)!
-      const members = [
-        { uMin: 0.00, uMax: 0.38, uMid: 0.19, hipV: 0.48, shV: 0.78, sp: stridePhase,        amp: 1.0  },
-        { uMin: 0.38, uMax: 0.68, uMid: 0.53, hipV: 0.44, shV: 0.72, sp: stridePhase + 0.85, amp: 0.88 },
-        { uMin: 0.68, uMax: 1.00, uMid: 0.84, hipV: 0.31, shV: 0.52, sp: stridePhase * 1.38, amp: 0.72 }
-      ];
-      for (let i = 0; i < vCount; i++) {
-        const u = uv[i * 2], v = uv[i * 2 + 1];
-        let x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2];
-        const m = u < 0.38 ? members[0] : (u < 0.68 ? members[1] : members[2]);
-        const s = Math.sin(m.sp), c = Math.cos(m.sp);
-        const du = (u - m.uMid) / ((m.uMax - m.uMin) * 0.5); // -1..+1 within this family member
-        // Leg stride (left vs right side of each person)
-        if (v < m.hipV) {
-          const legWeight = Math.min(1, (m.hipV - v) / m.hipV);
-          const sideSign = Math.tanh(du * 4.5); // Smooth left (-1) vs right (+1) leg separation!
-          const phaseSide = s * sideSign;
-          const lift = Math.max(0, c * sideSign) * legWeight * 0.065 * m.amp;
-          const kneeBend = Math.sin(legWeight * Math.PI) * Math.max(0, c * sideSign) * 0.08 * m.amp;
-          z += (phaseSide * 0.19 * legWeight + kneeBend) * m.amp;
-          y += lift;
-          x += phaseSide * 0.022 * legWeight * m.amp;
-        } else {
-          // Torso bounce, hip sway, gentle arm swing & head stabilization
-          const bounce = Math.abs(s) * 0.026 * m.amp;
-          y += bounce;
-          x += s * 0.018 * m.amp * Math.min(1, (v - m.hipV) / 0.25);
-          // Arms on outer edges of each member
-          if (v < m.shV && Math.abs(du) > 0.45) {
-            const armW = Math.min(1, (Math.abs(du) - 0.45) / 0.45) * Math.sin(((v - m.hipV) / Math.max(0.1, m.shV - m.hipV)) * Math.PI);
-            const armSide = du < 0 ? -1 : 1;
-            z += -s * armSide * 0.13 * armW * m.amp;
-          }
-          // Subtle head look & nod
-          if (v > m.shV) {
-            const hw = Math.min(1, (v - m.shV) / 0.16);
-            z += Math.sin(elapsed * 1.1 + ph + m.uMid * 5) * 0.025 * hw;
-          }
-        }
-        pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
-      }
-    } else if (isWalking) {
-      // Single Walking Person: True 3D Opposite-Phase Leg Stride, Knee Lift, Counter-Phase Arm Swing, Torso Sway & Head Bob!
-      const s = Math.sin(stridePhase), c = Math.cos(stridePhase);
-      const bounce = Math.abs(s) * 0.032;
-      const breath = Math.sin(elapsed * 2.4 + ph) * 0.008;
-      const headTurn = Math.sin(elapsed * 0.9 + ph) * 0.028;
-
-      for (let i = 0; i < vCount; i++) {
-        const u = uv[i * 2], v = uv[i * 2 + 1];
-        let x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2];
-        const du = (u - 0.5) * 2.0; // -1 (left edge) .. +1 (right edge)
-
-        if (v < 0.49) {
-          // Anatomical legs + feet (y = 0 at shoe sole, y = 0.49 at hip!)
-          const legW = Math.min(1, (0.49 - v) / 0.49); // 0 at hip -> 1 at foot
-          const side = Math.tanh(du * 5.0);            // Smooth -1 left leg / +1 right leg
-          const swing = s * side;
-          const forwardLift = Math.max(0, c * side);   // Lifts swinging foot off ground!
-          const kneeArc = Math.sin(legW * Math.PI) * forwardLift * 0.095;
-          z += swing * 0.24 * legW + kneeArc;
-          y += forwardLift * 0.075 * legW + bounce * (1.0 - legW);
-          x += swing * 0.032 * legW + s * 0.016 * (1.0 - legW);
-        } else {
-          // Upper body: hip sway + counter-swinging arms + breathing + natural head turn!
-          const upperT = Math.min(1, (v - 0.49) / 0.34);
-          y += bounce + (v > 0.56 && v < 0.82 ? breath * Math.sin(((v - 0.56) / 0.26) * Math.PI) : 0);
-          x += s * 0.024 * Math.sin(upperT * Math.PI * 0.75);
-          // Slight natural torso twist around vertical axis
-          z += -s * du * 0.035 * upperT;
-
-          // Counter-phase arm swing on outer left & right sleeve/hand zones (v = 0.46..0.79, |du| > 0.38)
-          if (v < 0.80 && Math.abs(du) > 0.36) {
-            const armLat = Math.min(1, (Math.abs(du) - 0.36) / 0.45);
-            const armVert = Math.min(1, (0.80 - v) / 0.26); // 0 at shoulder -> 1 at hand
-            const armSide = du < 0 ? -1 : 1;
-            z += -s * armSide * 0.16 * armLat * armVert;
-            y += Math.max(0, -s * armSide) * 0.028 * armLat * armVert;
-          }
-          // Natural living head look & subtle tilt
-          if (v > 0.82) {
-            const hw = Math.min(1, (v - 0.82) / 0.15);
-            z += headTurn * du * hw;
-            x += Math.sin(elapsed * 0.7 + ph) * 0.012 * hw;
-          }
-        }
-        pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
-      }
-    } else {
-      // Standing / Working Person (Afriquia Pump Attendants, Chefs, Café/Shop Guests): Living Breathing, Weight Shift, Arm Gesture & Head Glance!
-      const sway = Math.sin(elapsed * 0.85 + ph);
-      const breath = Math.sin(elapsed * 1.85 + ph);
-      const glance = Math.sin(elapsed * 0.62 + ph * 1.7);
-      const workAct = Math.sin(elapsed * 2.1 + ph);
-      const isWorker = (p.key === 'afriquia' || p.key === 'chef');
-
-      for (let i = 0; i < vCount; i++) {
-        const u = uv[i * 2], v = uv[i * 2 + 1];
-        let x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2];
-        const du = (u - 0.5) * 2.0;
-
-        // Feet remain 100% planted (v=0 -> weight=0), body gently shifts weight smoothly upward!
-        const plantW = Math.min(1, Math.max(0, (v - 0.08) / 0.45));
-        x += sway * 0.026 * plantW * plantW;
-        z += Math.cos(elapsed * 0.85 + ph) * 0.015 * plantW;
-
-        // Natural chest breathing (v = 0.55..0.82)
-        if (v > 0.54 && v < 0.84) {
-          const bw = Math.sin(((v - 0.54) / 0.30) * Math.PI);
-          y += breath * 0.010 * bw;
-          z += breath * 0.014 * bw * (1.0 - Math.abs(du) * 0.4);
-        }
-
-        // Subtle gesturing / working arm & hand movement (Afriquia attendant / Chef / Visitor!)
-        if (v > 0.42 && v < 0.78 && Math.abs(du) > 0.34) {
-          const aw = Math.min(1, (Math.abs(du) - 0.34) / 0.46) * Math.min(1, (0.78 - v) / 0.24);
-          const gestAmp = isWorker ? 0.068 : 0.030;
-          const armDir = du < 0 ? 1 : -0.6;
-          z += workAct * gestAmp * aw * armDir;
-          y += Math.max(0, workAct) * gestAmp * 0.45 * aw;
-        }
-
-        // Living head turn & subtle friendly nod (v > 0.81)
-        if (v > 0.81) {
-          const hw = Math.min(1, (v - 0.81) / 0.16);
-          z += glance * du * 0.042 * hw;
-          x += glance * 0.018 * hw;
-          y += Math.sin(elapsed * 1.2 + ph) * 0.008 * hw;
-        }
-
-        pos[i * 3] = x; pos[i * 3 + 1] = y; pos[i * 3 + 2] = z;
-      }
-    }
-    p.card.geometry.attributes.position.needsUpdate = true;
-  }
-
+  // =========================================================================
+  // REAL 3D SKELETALLY ANIMATED DESIGNED HUMANS (hv_girl, michelle, man_rigged, visitor_sit!)
+  // =========================================================================
+  const humanSpawnPlan = [];
   function populateHumansAndFamilies(g, M) {
-    function addPhotoWalker(key, x1, z1, x2, z2, y, speed, height = 1.78, phase = 0, flipX = false) {
-      const ph = createPhotoHuman(key, height, M.contactAO, flipX);
-      ph.root.position.set(x1, y, z1);
-      g.add(ph.root);
-      animatedPeople.push({ type: 'photo_walk', ...ph, x1, z1, x2, z2, y, speed, t: phase, dir: 1, phase: Math.random() * 6.28 });
-    }
-    function addPhotoStatic(key, x, y, z, height = 1.78, flipX = false) {
-      const ph = createPhotoHuman(key, height, M.contactAO, flipX);
-      ph.root.position.set(x, y, z);
-      g.add(ph.root);
-      animatedPeople.push({ type: 'photo_static', ...ph, y, phase: Math.random() * 6.28 });
-    }
+    // Queue real 3D skeletal humans (spawned cleanly as soon as GLBs finish loading!)
+    const addWalk3D = (kind, x1, z1, x2, z2, y, speed, opts = {}) => {
+      humanSpawnPlan.push({ mode: 'walk', kind, x1, z1, x2, z2, y, speed, ...opts });
+    };
+    const addIdle3D = (kind, x, y, z, rotY, opts = {}) => {
+      humanSpawnPlan.push({ mode: 'idle', kind, x, y, z, rotY, ...opts });
+    };
 
-    // 1. REAL MOROCCAN FAMILIES strolling along Galerie Commerciale, Cour Palmiers & toward Mini Brahim / Oasis Café!
-    addPhotoWalker('family', -1.35, 17.5, -1.35, 44.5, Y_RDC, 0.86, 1.80, 0.16, false);
-    addPhotoWalker('family', -9.2,  52.0, -1.8,  52.0, Y_RDC, 0.78, 1.78, 0.45, true);
-    addPhotoWalker('family', -15.0, -21.5, -10.5, -19.2, Y_RDC, 0.80, 1.80, 0.22, false);
+    // 1. FAMILY #1 strolling along RDC Galerie Commerciale (Father + Mother + Child!)
+    addWalk3D('man',      -1.65, 17.0, -1.65, 44.0, Y_RDC, 0.92, { height: 1.80, coat: 0x263547, pants: 0x20242b, t: 0.15 });
+    addWalk3D('michelle', -1.05, 17.2, -1.05, 44.2, Y_RDC, 0.92, { height: 1.66, tint: 0xe6d7c8, t: 0.15 });
+    addWalk3D('hv_girl',  -1.35, 17.9, -1.35, 44.9, Y_RDC, 0.92, { height: 1.24, t: 0.15 });
 
-    // 2. REAL SHOPPERS & BUSINESS PROFESSIONALS (RDC Gallery, Parking Walkway, Oasis Café Terrace, 1er Étage Coursive & Plateau!)
-    addPhotoWalker('woman_walk', -1.45, 39.0, -1.45, 8.0,  Y_RDC,   0.98, 1.68, 0.58, false);
-    addPhotoWalker('man_walk',   -10.6, 10.0, -10.6, 38.0, Y_RDC,   1.02, 1.80, 0.30, false);
-    addPhotoWalker('office',      1.25, 18.5,  1.25, 48.0, Y_ETAGE, 0.92, 1.80, 0.25, false);
-    addPhotoWalker('woman_walk', -1.35, 14.0, -1.35, 44.0, Y_ETAGE, 0.86, 1.69, 0.52, true);
+    // 2. FAMILY #2 near Cour des Palmiers & Angle 45m²!
+    addWalk3D('man',      -9.4, 51.8, -1.6, 51.8, Y_RDC, 0.85, { height: 1.79, coat: 0x3b4d3e, pants: 0x26282e, t: 0.42 });
+    addWalk3D('hv_girl',  -9.4, 52.4, -1.6, 52.4, Y_RDC, 0.85, { height: 1.66, t: 0.42 });
 
-    // 3. REAL AFRIQUIA STATION ATTENDANTS (Full-body Orange Coveralls + Blue Collar + Blue Cap!)
-    addPhotoStatic('afriquia', -13.8, 0.0, -45.4, 1.79, false);
-    addPhotoStatic('afriquia',  -8.6, 0.0, -38.8, 1.78, true);
-    addPhotoStatic('afriquia', -11.6, 0.0, -48.6, 1.80, false);
+    // 3. Strolling Shoppers & Professionals (RDC Gallery, Parking Walkway, Mini Brahim, 1er Étage Coursive & Plateau!)
+    addWalk3D('michelle', -14.6, -21.0, -10.2, -19.2, Y_RDC,   0.88, { height: 1.67, tint: 0xd9c2b0, t: 0.22 });
+    addWalk3D('hv_girl',   -1.4,  38.0,  -1.4,   8.0, Y_RDC,   1.00, { height: 1.68, t: 0.58 });
+    addWalk3D('man',      -10.6,  10.0, -10.6,  37.0, Y_RDC,   1.04, { height: 1.81, coat: 0x38414d, pants: 0x1f252e, t: 0.30 });
+    addWalk3D('man',        1.2,  18.5,   1.2,  48.0, Y_ETAGE, 0.92, { height: 1.78, coat: 0x2c3e52, pants: 0x1d2229, t: 0.25 });
+    addWalk3D('michelle',  -1.35, 14.0,  -1.35, 44.0, Y_ETAGE, 0.88, { height: 1.67, tint: 0xc9d4e0, t: 0.52 });
 
-    // 4. REAL VISITORS AT OASIS CAFÉ TERRACE, MINI BRAHIM & 1ER ÉTAGE ADMIN!
-    addPhotoStatic('man_walk',   -9.3,  0.12, -26.5, 1.79, false);
-    addPhotoStatic('woman_walk', -9.2,  0.12, -24.4, 1.68, true);
-    addPhotoStatic('woman_walk', -9.4,  0.12, -17.6, 1.69, false);
-    addPhotoStatic('man_walk',   -5.2,  0.12, -19.2, 1.78, true);
-    addPhotoStatic('office',      2.2,  Y_ETAGE, 3.2, 1.79, false);
-    addPhotoStatic('man_walk',    4.6,  Y_ETAGE, 25.4, 1.78, true);
+    // 4. REAL 3D AFRIQUIA STATION ATTENDANTS (Full-body Orange Coveralls + Royal Blue Collar + Blue Cap!)
+    addIdle3D('afriquia', -13.8, 0.0, -45.4,  0.55, { height: 1.79 });
+    addIdle3D('afriquia',  -8.6, 0.0, -38.8, -0.75, { height: 1.77 });
+    addIdle3D('afriquia', -11.6, 0.0, -48.6,  0.20, { height: 1.80 });
 
-    // 5. REAL DARK KITCHEN CHEFS (Sous-sol 125 m²)
-    addPhotoStatic('chef', 3.4, Y_SSOL,  2.2, 1.78, false);
-    addPhotoStatic('chef', 2.9, Y_SSOL, 11.4, 1.76, true);
+    // 5. SEATED REAL 3D GUESTS AT OASIS CAFÉ TERRACE (Built-in 'sit' skeletal animation!)
+    addIdle3D('sit', -11.42, 0.12, -27.2,  Math.PI / 2, { height: 1.66 });
+    addIdle3D('sit',  -9.98, 0.12, -27.2, -Math.PI / 2, { height: 1.66 });
+    addIdle3D('sit', -11.42, 0.12, -21.0,  Math.PI / 2, { height: 1.66 });
+    addIdle3D('hv_girl', -9.3, 0.12, -17.6, -1.2, { height: 1.67 });
+    addIdle3D('man',      2.1, Y_ETAGE, 3.1, Math.PI, { height: 1.79, coat: 0x263140, pants: 0x1e2228 });
+
+    // 6. REAL 3D DARK KITCHEN CHEFS (Crisp White Chef Uniform + Chef Hat!)
+    addIdle3D('chef', 3.4, Y_SSOL,  2.2, Math.PI, { height: 1.78 });
+    addIdle3D('chef', 2.9, Y_SSOL, 11.4, 0.35,    { height: 1.75 });
   }
 
   // =========================================================================
@@ -2270,18 +2155,10 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
       const az = z + dirZ * fwd1 + perpZ * side1, bz = z + dirZ * fwd2 + perpZ * side2;
       B.addBox(ax, y + y1, az, bx, y + y2, bz, mat, col ? { collide: floor } : {});
     };
-    // Porcelain flush cistern tank against wall
-    put(0.02, 0.22, 0.36, 0.84, -0.20, 0.20, M.afriquiaWhite, true);
-    // Chrome dual-flush push button on cistern top
-    put(0.09, 0.15, 0.84, 0.865, -0.05, 0.05, M.inox);
-    // Sculpted ceramic pedestal base
-    put(0.18, 0.56, 0.00, 0.36, -0.14, 0.14, M.afriquiaWhite, true);
-    // Porcelain bowl body & inner dark basin recess
-    put(0.20, 0.68, 0.30, 0.42, -0.19, 0.19, M.afriquiaWhite);
-    put(0.26, 0.62, 0.415, 0.432, -0.13, 0.13, M.anthracite);
-    // Toilet seat ring & open upright lid against tank
-    put(0.22, 0.67, 0.42, 0.445, -0.185, 0.185, M.afriquiaWhite);
-    put(0.22, 0.255, 0.44, 0.82, -0.175, 0.175, M.afriquiaWhite);
+    // Solid collider footprint for real 3D toilet.glb loaded cleanly in groups!
+    const ax = x + dirX * 0.02 + perpX * -0.22, bx = x + dirX * 0.68 + perpX * 0.22;
+    const az = z + dirZ * 0.02 + perpZ * -0.22, bz = z + dirZ * 0.68 + perpZ * 0.22;
+    colliders.push({ minX: Math.min(ax, bx), maxX: Math.max(ax, bx), minZ: Math.min(az, bz), maxZ: Math.max(az, bz), floor });
     // Wall-mounted chrome toilet paper holder on side
     put(0.32, 0.44, 0.60, 0.72, 0.26, 0.35, M.afriquiaWhite);
     put(0.30, 0.46, 0.71, 0.735, 0.26, 0.36, M.inox);
@@ -2330,12 +2207,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     const step = (endSpan - startSpan) / count;
     for (let i = 0; i < count; i++) {
       const sc = startSpan + (i + 0.5) * step;
-      // Ceramic counter-top basin rim & interior bowl
-      add(0.10, 0.48, hTop, hTop + 0.11, sc - 0.24, sc + 0.24, M.afriquiaWhite);
-      add(0.15, 0.43, hTop + 0.095, hTop + 0.115, sc - 0.18, sc + 0.18, M.wallRoof);
-      // Chrome mixer faucet + spout
-      add(0.04, 0.10, hTop, hTop + 0.22, sc - 0.022, sc + 0.022, M.inox);
-      add(0.06, 0.20, hTop + 0.18, hTop + 0.22, sc - 0.018, sc + 0.018, M.inox);
+      // Real 3D sink.glb (ceramic bowl + chrome faucet) sits cleanly on countertop here!
       // Wall soap dispenser beside faucet
       add(0.0, 0.09, hTop + 0.14, hTop + 0.30, sc + 0.24, sc + 0.32, M.afriquiaWhite);
       // Under-sink chrome siphon pipe
@@ -2447,6 +2319,68 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     carObj.frontPivots = [];
   }
 
+  // Helper: Filter Mixamo AnimationClip to rotation-only tracks so HVGirl Walk/Idle retargets cleanly onto Michelle too!
+  function makeRetargetClip(clip) {
+    const tracks = clip.tracks.filter(tr => tr.name.endsWith('.quaternion'));
+    return new THREE.AnimationClip(clip.name + '_retarget', clip.duration, tracks);
+  }
+
+  function buildRiggedMan3D(template, opts, aoMat) {
+    const clone = SkeletonUtils.clone(template);
+    const isAfriquia = opts.kind === 'afriquia';
+    const isChef = opts.kind === 'chef';
+    const coatCol = isAfriquia ? 0xe85a16 : (isChef ? 0xf3f5f7 : (opts.coat || 0x2c3c4f));
+    const pantCol = isAfriquia ? 0xe85a16 : (isChef ? 0x22262d : (opts.pants || 0x22262d));
+
+    const bones = {};
+    clone.traverse(o => {
+      if (o.isBone) {
+        const bn = o.name.toLowerCase();
+        ['pelvis','spine_01','spine_02','spine_03','head','thigh_l','calf_l','thigh_r','calf_r','upperarm_l','lowerarm_l','upperarm_r','lowerarm_r'].forEach(k => {
+          if (bn === k) { bones[k] = o; o.userData.q0 = o.quaternion.clone(); }
+        });
+      }
+      if (o.isMesh && o.material) {
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        const clonedMats = mats.map(m => {
+          const cm = m.clone();
+          const mn = (cm.name || '').toLowerCase();
+          if (mn.includes('coat') || mn.includes('brass')) {
+            cm.color.setHex(coatCol); cm.roughness = 0.86; cm.metalness = 0.04;
+          } else if (mn.includes('trouser')) {
+            cm.color.setHex(pantCol); cm.roughness = 0.88; cm.metalness = 0.02;
+          } else if (mn.includes('skin')) {
+            cm.color.setHex(0xd4a482); cm.roughness = 0.72;
+          }
+          return cm;
+        });
+        o.material = Array.isArray(o.material) ? clonedMats : clonedMats[0];
+      }
+    });
+
+    const fit = normalizeAndFit(clone, opts.height || 1.79, 'height', 0);
+    if (aoMat) {
+      const sh = new THREE.Mesh(new THREE.PlaneGeometry(0.82, 0.82), aoMat);
+      sh.rotation.x = -Math.PI / 2; sh.position.y = 0.025; fit.add(sh);
+    }
+    // Add royal blue collar & blue cap on Afriquia Attendants, or crisp white toque on Chefs!
+    if (bones.head && (isAfriquia || isChef)) {
+      const headAcc = new THREE.Mesh(
+        isAfriquia ? new THREE.SphereGeometry(0.115, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55)
+                   : new THREE.CylinderGeometry(0.11, 0.095, 0.18, 14),
+        new THREE.MeshStandardMaterial({ color: isAfriquia ? 0x146cc8 : 0xf8fafc, roughness: 0.78 })
+      );
+      headAcc.position.set(0, isAfriquia ? 0.06 : 0.16, 0);
+      bones.head.add(headAcc);
+      if (isAfriquia && bones.spine_03) {
+        const colRing = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.026, 8, 16), new THREE.MeshStandardMaterial({ color: 0x146cc8, roughness: 0.80 }));
+        colRing.rotation.x = Math.PI / 2; colRing.position.set(0, 0.14, 0);
+        bones.spine_03.add(colRing);
+      }
+    }
+    return { root: fit, bones };
+  }
+
   function loadHeavyAssetsAndHDRIs(M) {
     const bar = document.getElementById('loader-bar');
     const msg = document.getElementById('loader-msg');
@@ -2462,10 +2396,10 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     gltfLoader.setDRACOLoader(draco);
 
     let doneCount = 0;
-    const totalSteps = 12;
+    const totalSteps = 18;
     const bumpProg = (label) => {
       doneCount++;
-      setProg(Math.min(100, Math.round(10 + (doneCount / totalSteps) * 90)), label);
+      setProg(Math.min(100, Math.round(6 + (doneCount / totalSteps) * 94)), label);
     };
 
     const finishLoader = () => {
@@ -2489,122 +2423,272 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
       gltfLoader.load(path, gltf => resolve(gltf), undefined, err => { console.warn('GLTF skip:', path, err); resolve(null); });
     });
 
+    // Load 4 Real 3D Rigged Humans together so Mixamo Walk/Idle clips can animate BOTH hv_girl & michelle!
+    const peoplePromise = Promise.all([
+      loadGLTF('assets/models/hv_girl.glb'),
+      loadGLTF('assets/models/michelle.glb'),
+      loadGLTF('assets/models/man_rigged.glb'),
+      loadGLTF('assets/models/visitor_sit.glb')
+    ]).then(([hvG, miG, manG, sitG]) => {
+      bumpProg('Vrais humains 3D animés par squelette chargés…');
+      const walkClip = hvG && hvG.animations ? hvG.animations.find(a => a.name.toLowerCase() === 'walking') : null;
+      const idleClip = hvG && hvG.animations ? hvG.animations.find(a => a.name.toLowerCase() === 'idle') : null;
+      const walkRetarget = walkClip ? makeRetargetClip(walkClip) : null;
+      const idleRetarget = idleClip ? makeRetargetClip(idleClip) : null;
+
+      humanSpawnPlan.forEach((sp, idx) => {
+        if ((sp.kind === 'hv_girl' && hvG) || (sp.kind === 'michelle' && miG)) {
+          const src = sp.kind === 'hv_girl' ? hvG : miG;
+          const clone = SkeletonUtils.clone(src.scene);
+          if (sp.tint) {
+            clone.traverse(o => {
+              if (o.isMesh && o.material && o.material.color) {
+                o.material = o.material.clone();
+                o.material.color.lerp(new THREE.Color(sp.tint), 0.25);
+              }
+            });
+          }
+          // Mixamo models face +Z!
+          const fit = normalizeAndFit(clone, sp.height || 1.67, 'height', 0);
+          const sh = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.78), M.contactAO);
+          sh.rotation.x = -Math.PI / 2; sh.position.y = 0.025; fit.add(sh);
+          if (sp.mode === 'idle') {
+            fit.position.set(sp.x, sp.y, sp.z);
+            fit.rotation.y = sp.rotY || 0;
+          } else {
+            fit.position.set(sp.x1, sp.y, sp.z1);
+          }
+          groups.people.add(fit);
+
+          const mixer = new THREE.AnimationMixer(clone);
+          const clip = sp.mode === 'walk'
+            ? (sp.kind === 'hv_girl' ? walkClip : walkRetarget)
+            : (sp.kind === 'hv_girl' ? idleClip : idleRetarget);
+          if (clip) {
+            const act = mixer.clipAction(clip);
+            act.timeScale = sp.mode === 'walk' ? (0.85 + (idx % 3) * 0.08) : 0.9;
+            act.time = (idx * 0.43) % (clip.duration || 1);
+            act.play();
+            gltfMixers.push(mixer);
+          }
+          animatedPeople.push({ ...sp, root: fit, bones: null, dir: 1, t: sp.t || 0, phase: idx * 1.1 });
+        } else if ((sp.kind === 'man' || sp.kind === 'afriquia' || sp.kind === 'chef') && manG) {
+          const built = buildRiggedMan3D(manG.scene, sp, M.contactAO);
+          if (sp.mode === 'idle') {
+            built.root.position.set(sp.x, sp.y, sp.z);
+            built.root.rotation.y = sp.rotY || 0;
+          } else {
+            built.root.position.set(sp.x1, sp.y, sp.z1);
+          }
+          groups.people.add(built.root);
+          animatedPeople.push({ ...sp, root: built.root, bones: built.bones, dir: 1, t: sp.t || 0, phase: idx * 1.3 });
+        } else if (sp.kind === 'sit' && sitG) {
+          const clone = SkeletonUtils.clone(sitG.scene);
+          const fit = normalizeAndFit(clone, 1.28, 'height', 0);
+          fit.position.set(sp.x, sp.y, sp.z);
+          fit.rotation.y = sp.rotY || 0;
+          groups.people.add(fit);
+          if (sitG.animations && sitG.animations.length) {
+            const mixer = new THREE.AnimationMixer(clone);
+            const act = mixer.clipAction(sitG.animations[0]);
+            act.timeScale = 0.75; act.play();
+            gltfMixers.push(mixer);
+          }
+        }
+      });
+    });
+
     Promise.all([
-      loadHDR('day', 'assets/hdr/day.hdr').then(() => bumpProg('Ciel HDRI 360° Soleil chargé…')),
+      loadHDR('day', 'assets/hdr/day.hdr').then(() => bumpProg('Ciel bleu vif HDRI 360° chargé…')),
+      peoplePromise,
+      // Real 3D Commercial Delivery Van (Camionnette) replacing van vehicles!
+      loadGLTF('assets/models/delivery_van.glb').then(g => {
+        bumpProg('Camionnettes de livraison 3D chargées…');
+        if (!g) return;
+        vanEntries.forEach((vObj, idx) => {
+          const keepAO = vObj.grp.children.length > 0 && vObj.grp.children[0].geometry && vObj.grp.children[0].geometry.type === 'PlaneGeometry'
+            ? vObj.grp.children[0] : null;
+          while (vObj.grp.children.length > 0) vObj.grp.remove(vObj.grp.children[0]);
+          if (keepAO) vObj.grp.add(keepAO);
+          const cl = g.scene.clone(true);
+          const vanPaint = new THREE.MeshPhysicalMaterial({ color: idx % 3 === 0 ? 0xe5e9ee : 0xf5f7fa, roughness: 0.24, metalness: 0.22, clearcoat: 0.7, envMapIntensity: 1.4 });
+          cl.traverse(o => {
+            if (o.isMesh && o.material && (o.material.name || '').toLowerCase().includes('truck')) o.material = vanPaint;
+          });
+          // CesiumMilkTruck faces +X by default -> rotateY(-PI/2) aligns front to +Z!
+          const vanFit = normalizeAndFit(cl, 4.90, 'maxXZ', -Math.PI / 2);
+          vObj.grp.add(vanFit);
+          vObj.wheels = []; vObj.frontPivots = [];
+        });
+      }),
+      // Real 3D Sanitary Fixtures: Ceramic Toilets (toilet.glb) & Ceramic Sinks (sink.glb) across ALL restrooms!
+      loadGLTF('assets/models/toilet.glb').then(g => {
+        bumpProg('Sanitaires 3D (WC céramique) chargés…');
+        if (!g) return;
+        const porcMat = new THREE.MeshPhysicalMaterial({ color: 0xf8fafc, roughness: 0.12, metalness: 0.04, clearcoat: 0.9, envMapIntensity: 1.3 });
+        const placeToilet = (grp, x, y, z, rotY) => {
+          const cl = g.scene.clone(true);
+          cl.traverse(o => { if (o.isMesh) o.material = porcMat; });
+          const t = normalizeAndFit(cl, 0.82, 'height', rotY);
+          t.position.set(x, y, z);
+          grp.add(t);
+        };
+        // 1er Étage Sanitaires (3 cabins along East wall)
+        [9.0, 10.6, 12.2].forEach(tz => placeToilet(groups.etage, MALL_BACK_X - 0.50, Y_ETAGE, tz, -Math.PI / 2));
+        // RDC WC Employés SE Corner (2 cabins)
+        placeToilet(groups.rdc, 4.72, Y_RDC, 55.65, Math.PI / 2);
+        placeToilet(groups.rdc, 4.72, Y_RDC, 58.15, Math.PI / 2);
+        // Station Public Restrooms (2 cabins)
+        placeToilet(groups.station, -1.08, 0.12, -17.95, Math.PI / 2);
+        placeToilet(groups.station, -1.08, 0.12, -15.55, Math.PI / 2);
+      }),
+      loadGLTF('assets/models/sink.glb').then(g => {
+        bumpProg('Lavabos & robinets 3D chargés…');
+        if (!g) return;
+        const placeSink = (grp, x, y, z, rotY) => {
+          const cl = g.scene.clone(true);
+          const s = normalizeAndFit(cl, 0.34, 'height', rotY);
+          s.position.set(x, y, z);
+          grp.add(s);
+        };
+        // 1er Étage 3-basin vanity
+        [11.1, 12.5, 13.9].forEach(sz => placeSink(groups.etage, 3.84, Y_ETAGE + 0.84, sz, Math.PI / 2));
+        // RDC WC Employés 2-basin vanity
+        [55.0, 56.2].forEach(sz => placeSink(groups.rdc, MALL_BACK_X - 0.42, Y_RDC + 0.84, sz, -Math.PI / 2));
+        // Station Restrooms 2-basin vanity
+        [-17.75, -15.95].forEach(sz => placeSink(groups.station, 1.18, 0.12 + 0.84, sz, -Math.PI / 2));
+        // Vestiaires Cuisine staff sink
+        placeSink(groups.rdc, 7.6, Y_RDC + 0.84, 12.62, 0);
+      }),
+      // Real 3D Scanned Poly Haven Kitchen Equipment inside the 125 m² Dark Kitchen!
+      loadGLTF('assets/models/electric_stove/electric_stove_1k.gltf').then(g => {
+        bumpProg('Cuisinières & fours 3D Dark Kitchen chargés…');
+        if (!g) return;
+        [1.1, 2.7, 4.3].forEach(sx => {
+          const st = normalizeAndFit(g.scene.clone(true), 0.94, 'height', 0);
+          st.position.set(sx, Y_SSOL, 0.86);
+          groups.ssol.add(st);
+        });
+      }),
+      loadGLTF('assets/models/brass_pot_01/brass_pot_01_1k.gltf').then(g => {
+        bumpProg('Marmites & ustensiles 3D Dark Kitchen…');
+        if (!g) return;
+        [[1.05, 0.78], [2.85, 0.82], [4.25, 3.65]].forEach(([px, pz], i) => {
+          const p = normalizeAndFit(g.scene.clone(true), 0.24, 'height', i * 1.1);
+          p.position.set(px, Y_SSOL + 0.94, pz);
+          groups.ssol.add(p);
+        });
+      }),
+      loadGLTF('assets/models/brass_pan_01/brass_pan_01_1k.gltf').then(g => {
+        bumpProg('Poêles de cuisson 3D Dark Kitchen…');
+        if (!g) return;
+        [[2.52, 0.92], [4.35, 0.86], [3.4, 3.85]].forEach(([px, pz], i) => {
+          const p = normalizeAndFit(g.scene.clone(true), 0.12, 'height', i * 1.4);
+          p.position.set(px, Y_SSOL + 0.94, pz);
+          groups.ssol.add(p);
+        });
+      }),
+      loadGLTF('assets/models/pot_enamel_01/pot_enamel_01_1k.gltf').then(g => {
+        bumpProg('Casseroles & plats 3D Dark Kitchen…');
+        if (!g) return;
+        [[1.38, 0.92], [4.85, 3.82]].forEach(([px, pz], i) => {
+          const p = normalizeAndFit(g.scene.clone(true), 0.22, 'height', i * 0.9);
+          p.position.set(px, Y_SSOL + 0.94, pz);
+          groups.ssol.add(p);
+        });
+      }),
+      loadGLTF('assets/models/worn_metal_rack/worn_metal_rack_1k.gltf').then(g => {
+        bumpProg('Rayonnages inox 3D Dark Kitchen…');
+        if (!g) return;
+        [5.8, 6.7].forEach(rz => {
+          const rk = normalizeAndFit(g.scene.clone(true), 2.02, 'height', -Math.PI / 2);
+          rk.position.set(7.72, Y_SSOL, rz);
+          groups.ssol.add(rk);
+        });
+      }),
+      loadGLTF('assets/models/vintage_electric_kettle/vintage_electric_kettle_1k.gltf').then(g => {
+        bumpProg('Équipements comptoir café & cuisine…');
+        if (!g) return;
+        const k1 = normalizeAndFit(g.scene.clone(true), 0.26, 'height', 0.4);
+        k1.position.set(-2.4, 1.15, -24.2); groups.station.add(k1);
+        const k2 = normalizeAndFit(g.scene.clone(true), 0.26, 'height', -0.6);
+        k2.position.set(5.35, Y_SSOL + 0.94, 3.85); groups.ssol.add(k2);
+      }),
+      // Oasis Café 3D Furniture & Lamps
       loadGLTF('assets/models/coffee_table_round_01/coffee_table_round_01_1k.gltf').then(g => {
-        bumpProg('Tables 3D Oasis Café chargées…');
+        bumpProg('Tables 3D Oasis Café…');
         if (!g) return;
         for (let i = 0; i < 5; i++) {
           const tz = -27.2 + i * 3.1, tx = -10.7;
           const tbl = normalizeAndFit(g.scene.clone(true), 0.78, 'height', i * 0.7);
-          tbl.position.set(tx, 0.12, tz);
-          groups.heavyProps.add(tbl);
+          tbl.position.set(tx, 0.12, tz); groups.heavyProps.add(tbl);
         }
       }),
       loadGLTF('assets/models/bar_chair_round_01/bar_chair_round_01_1k.gltf').then(g => {
-        bumpProg('Tabourets 3D Oasis Café chargés…');
+        bumpProg('Tabourets 3D Oasis Café…');
         if (!g) return;
         for (let i = 0; i < 5; i++) {
           const tz = -27.2 + i * 3.1, tx = -10.7;
           [-0.72, 0.72].forEach(dx => {
             const ch = normalizeAndFit(g.scene.clone(true), 0.56, 'height', dx > 0 ? -Math.PI/2 : Math.PI/2);
-            ch.position.set(tx + dx, 0.12, tz);
-            groups.heavyProps.add(ch);
+            ch.position.set(tx + dx, 0.12, tz); groups.heavyProps.add(ch);
           });
         }
       }),
       loadGLTF('assets/models/hanging_industrial_lamp/hanging_industrial_lamp_1k.gltf').then(g => {
-        bumpProg('Luminaires 3D Oasis Café chargés…');
+        bumpProg('Luminaires 3D Oasis Café…');
         if (!g) return;
         [-27.0, -25.2, -23.4].forEach(pz => {
           const lmp = normalizeAndFit(g.scene.clone(true), 0.68, 'height', 0);
-          lmp.position.set(-8.2 - 0.85, 3.85 - 0.70, pz);
-          groups.heavyProps.add(lmp);
+          lmp.position.set(-8.2 - 0.85, 3.85 - 0.70, pz); groups.heavyProps.add(lmp);
         });
       }),
-      // REAL SCANNED POLY HAVEN 3D SHRUBS across NW Island, NE Island, Parking Median & Cour des Palmiers!
-      loadGLTF('assets/models/shrub_02/shrub_02_1k.gltf').then(g => {
-        bumpProg('Arbustes méditerranéens 3D (1/3)…');
-        if (!g) return;
-        [[-30.2, 0.25, -56.2, 1.05], [-26.2, 0.25, -60.5, 0.95], [8.0, 0.25, -56.2, 1.0], [11.8, 0.25, -59.5, 0.92],
-         [-22.7, 0.25, 10.5, 0.90], [-22.7, 0.25, 24.5, 0.95], [-22.7, 0.25, 38.5, 0.92], [-6.8, 0.34, 48.8, 1.05]].forEach(([px, py, pz, h], i) => {
-          const s = normalizeAndFit(g.scene.clone(true), h, 'height', i * 1.3);
-          s.position.set(px, py, pz);
-          groups.heavyProps.add(s);
-        });
+      // Poly Haven Scanned 3D Shrubs & Plants
+      Promise.all([
+        loadGLTF('assets/models/shrub_02/shrub_02_1k.gltf'),
+        loadGLTF('assets/models/shrub_03/shrub_03_1k.gltf'),
+        loadGLTF('assets/models/shrub_04/shrub_04_1k.gltf'),
+        loadGLTF('assets/models/potted_plant_01/potted_plant_01_1k.gltf'),
+        loadGLTF('assets/models/potted_plant_02/potted_plant_02_1k.gltf'),
+        loadGLTF('assets/models/plant_tropical.glb')
+      ]).then(([s2, s3, s4, p1, p2, pt]) => {
+        bumpProg('Arbustes & plantes botaniques 3D…');
+        if (s2) [[-30.2,0.25,-56.2,1.05],[-26.2,0.25,-60.5,0.95],[8.0,0.25,-56.2,1.0],[11.8,0.25,-59.5,0.92],[-22.7,0.25,10.5,0.9],[-22.7,0.25,24.5,0.95],[-22.7,0.25,38.5,0.92],[-6.8,0.34,48.8,1.05]].forEach(([px,py,pz,h],i)=>{ const m=normalizeAndFit(s2.scene.clone(true),h,'height',i*1.3); m.position.set(px,py,pz); groups.heavyProps.add(m); });
+        if (s3) [[-29.6,0.25,-60.4,0.95],[-25.8,0.25,-56.2,0.88],[7.6,0.25,-60.8,0.95],[12.2,0.25,-56.4,0.9],[-22.7,0.25,17.5,0.88],[-22.7,0.25,31.5,0.92],[-22.7,0.25,45.5,0.9],[-4.2,0.34,46.2,0.95]].forEach(([px,py,pz,h],i)=>{ const m=normalizeAndFit(s3.scene.clone(true),h,'height',i*1.7); m.position.set(px,py,pz); groups.heavyProps.add(m); });
+        if (s4) [[-27.8,0.25,-55.8,0.85],[10.0,0.25,-56.0,0.88],[-22.7,0.25,5.5,0.85],[-22.7,0.25,50.2,0.85],[-5.4,0.34,45.8,0.92],[-7.2,0.34,47.0,0.85]].forEach(([px,py,pz,h],i)=>{ const m=normalizeAndFit(s4.scene.clone(true),h,'height',i*2.1); m.position.set(px,py,pz); groups.heavyProps.add(m); });
+        if (p1) [[-8.7,0.12,-28.6],[-8.7,0.12,-22.2],[-8.7,0.12,-15.6],[-0.8,0.02,5.0],[-0.8,0.02,16.0],[-0.8,0.02,50.5]].forEach(([px,py,pz],i)=>{ const m=normalizeAndFit(p1.scene.clone(true),1.15,'height',i*1.1); m.position.set(px,py,pz); groups.heavyProps.add(m); });
+        if (p2) [[1.8,Y_ETAGE,4.1],[-1.8,Y_ETAGE,5.2],[-1.8,Y_ETAGE,18.0],[-1.8,Y_ETAGE,38.0],[-0.8,0.02,32.0]].forEach(([px,py,pz],i)=>{ const m=normalizeAndFit(p2.scene.clone(true),1.05,'height',i*1.4); m.position.set(px,py,pz); groups.heavyProps.add(m); });
+        if (pt) [-28.4,-26.8,-25.2,-23.6].forEach((tz,i)=>{ const m=normalizeAndFit(pt.scene.clone(true),0.92,'height',i*1.4); m.position.set(-12.25,0.74,tz); groups.heavyProps.add(m); });
       }),
-      loadGLTF('assets/models/shrub_03/shrub_03_1k.gltf').then(g => {
-        bumpProg('Arbustes méditerranéens 3D (2/3)…');
-        if (!g) return;
-        [[-29.6, 0.25, -60.4, 0.95], [-25.8, 0.25, -56.2, 0.88], [7.6, 0.25, -60.8, 0.95], [12.2, 0.25, -56.4, 0.90],
-         [-22.7, 0.25, 17.5, 0.88], [-22.7, 0.25, 31.5, 0.92], [-22.7, 0.25, 45.5, 0.90], [-4.2, 0.34, 46.2, 0.95]].forEach(([px, py, pz, h], i) => {
-          const s = normalizeAndFit(g.scene.clone(true), h, 'height', i * 1.7);
-          s.position.set(px, py, pz);
-          groups.heavyProps.add(s);
-        });
-      }),
-      loadGLTF('assets/models/shrub_04/shrub_04_1k.gltf').then(g => {
-        bumpProg('Arbustes méditerranéens 3D (3/3)…');
-        if (!g) return;
-        [[-27.8, 0.25, -55.8, 0.85], [10.0, 0.25, -56.0, 0.88], [-22.7, 0.25, 5.5, 0.85], [-22.7, 0.25, 50.2, 0.85],
-         [-5.4, 0.34, 45.8, 0.92], [-7.2, 0.34, 47.0, 0.85]].forEach(([px, py, pz, h], i) => {
-          const s = normalizeAndFit(g.scene.clone(true), h, 'height', i * 2.1);
-          s.position.set(px, py, pz);
-          groups.heavyProps.add(s);
-        });
-      }),
-      loadGLTF('assets/models/potted_plant_01/potted_plant_01_1k.gltf').then(g => {
-        bumpProg('Plantes en pot 3D (1/2)…');
-        if (!g) return;
-        [[-8.7, 0.12, -28.6], [-8.7, 0.12, -22.2], [-8.7, 0.12, -15.6], [-0.8, 0.02, 5.0], [-0.8, 0.02, 16.0], [-0.8, 0.02, 50.5]].forEach(([px, py, pz], idx) => {
-          const pl = normalizeAndFit(g.scene.clone(true), 1.15, 'height', idx * 1.1);
-          pl.position.set(px, py, pz);
-          groups.heavyProps.add(pl);
-        });
-      }),
-      loadGLTF('assets/models/potted_plant_02/potted_plant_02_1k.gltf').then(g => {
-        bumpProg('Plantes en pot 3D (2/2)…');
-        if (!g) return;
-        [[1.8, Y_ETAGE, 4.1], [-1.8, Y_ETAGE, 5.2], [-1.8, Y_ETAGE, 18.0], [-1.8, Y_ETAGE, 38.0], [-0.8, 0.02, 32.0]].forEach(([px, py, pz], idx) => {
-          const pl = normalizeAndFit(g.scene.clone(true), 1.05, 'height', idx * 1.4);
-          pl.position.set(px, py, pz);
-          groups.heavyProps.add(pl);
-        });
-      }),
-      loadGLTF('assets/models/plant_tropical.glb').then(g => {
-        bumpProg('Jardinières tropicales Oasis Café…');
-        if (!g) return;
-        [-28.4, -26.8, -25.2, -23.6].forEach((tz, idx) => {
-          const pl = normalizeAndFit(g.scene.clone(true), 0.92, 'height', idx * 1.4);
-          pl.position.set(-12.25, 0.74, tz);
-          groups.heavyProps.add(pl);
-        });
-      }),
+      // Real 3D Commercial Glass-Door Refrigerators (Mini Brahim + Dark Kitchen!)
       loadGLTF('assets/models/fridge.glb').then(g => {
-        bumpProg('Frigos vitrés Mini Brahim…');
+        bumpProg('Frigos vitrés Mini Brahim & Dark Kitchen…');
         if (!g) return;
         [-20.4, -18.9, -17.4].forEach(fz => {
           const fr = normalizeAndFit(g.scene.clone(true), 2.10, 'height', -Math.PI / 2);
-          fr.position.set(-2.15, 0.12, fz);
-          groups.heavyProps.add(fr);
+          fr.position.set(-2.15, 0.12, fz); groups.heavyProps.add(fr);
+        });
+        [2.9, 4.4].forEach(fz => {
+          const fr = normalizeAndFit(g.scene.clone(true), 2.15, 'height', -Math.PI / 2);
+          fr.position.set(7.65, Y_SSOL, fz); groups.ssol.add(fr);
         });
       }),
+      // Real 3D Office Desks (1er Étage Admin + Plateau 447 m²)
       loadGLTF('assets/models/metal_office_desk/metal_office_desk_1k.gltf').then(g => {
         bumpProg('Bureaux 3D 1er Étage…');
         if (!g) return;
         [[2.0, 1.95, 0], [6.1, 1.95, 0]].forEach(([dx, dz, rot]) => {
           const d = normalizeAndFit(g.scene.clone(true), 0.78, 'height', rot);
-          d.position.set(dx, Y_ETAGE, dz);
-          groups.etage.add(d);
+          d.position.set(dx, Y_ETAGE, dz); groups.etage.add(d);
         });
         [22.5, 29.0, 35.5].forEach(dz => {
           [3.4, 5.2].forEach(dx => {
             const d = normalizeAndFit(g.scene.clone(true), 0.76, 'height', Math.PI);
-            d.position.set(dx, Y_ETAGE, dz);
-            groups.etage.add(d);
+            d.position.set(dx, Y_ETAGE, dz); groups.etage.add(d);
           });
         });
-      })
+      }),
+      Promise.resolve().then(() => bumpProg('Finalisation de la scène…'))
     ]).then(() => {
       finishLoader();
       loadHDR('golden', 'assets/hdr/golden.hdr');
@@ -3406,27 +3490,14 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     // FULL COMMERCIAL DARK KITCHEN (125 m²) — Hot Cooking Line, Extractor Hood,
     // Gas Stoves, Fryers, Prep & Pass Islands, KDS Screens, Walk-in Freezer & Dishwashing!
     // =========================================================================
-    // A. HOT COOKING LINE along North wall (Z = 0.25..1.45, X = 0.4..7.6)
-    B.addBox(0.35, y0, 0.18, 7.65, y0 + 0.92, 1.38, M.inox, { collide: 'ssol' });
+    // A. HOT COOKING LINE along North wall: Real 3D Poly Haven electric_stove units (X = 0.4..5.2) + Plancha & Fryers (X = 5.2..7.65)!
+    colliders.push({ minX: 0.35, maxX: 5.25, minZ: 0.18, maxZ: 1.42, floor: 'ssol' });
+    B.addBox(5.25, y0, 0.18, 7.65, y0 + 0.92, 1.38, M.inox, { collide: 'ssol' });
     B.addBox(0.35, y0 + 0.92, 0.14, 7.65, y0 + 1.42, 0.22, M.inox); // Stainless grease backsplash
-    // 2× Commercial 6-Burner Gas Ranges + Lower Convection Ovens (X = 0.5..3.9)
-    [0.55, 2.25].forEach(rx => {
-      B.addBox(rx, y0 + 0.92, 0.30, rx + 1.50, y0 + 0.99, 1.28, M.anthracite); // Cast-iron stove top
-      for (let bx = 0; bx < 3; bx++) {
-        for (let bz = 0; bz < 2; bz++) {
-          B.addBox(rx + 0.14 + bx * 0.46, y0 + 0.99, 0.42 + bz * 0.44, rx + 0.46 + bx * 0.46, y0 + 1.03, 0.74 + bz * 0.44, M.steel);
-        }
-      }
-      // Front control panel + dials + oven door handle
-      B.addBox(rx + 0.04, y0 + 0.72, 1.38, rx + 1.46, y0 + 0.88, 1.42, M.anthracite);
-      for (let k = 0; k < 6; k++) B.addBox(rx + 0.14 + k * 0.22, y0 + 0.77, 1.42, rx + 0.22 + k * 0.22, y0 + 0.83, 1.46, M.steel);
-      B.addBox(rx + 0.12, y0 + 0.16, 1.38, rx + 1.38, y0 + 0.66, 1.41, M.steel); // Oven door
-      B.addBox(rx + 0.24, y0 + 0.58, 1.41, rx + 1.26, y0 + 0.63, 1.47, M.inox);  // Oven handle
-    });
-    // Flat-top Plancha Grill (X = 4.05..5.65)
-    B.addBox(4.05, y0 + 0.92, 0.34, 5.65, y0 + 0.98, 1.26, M.steel);
-    B.addBox(4.05, y0 + 0.98, 0.30, 5.65, y0 + 1.08, 0.36, M.inox); // Grease guard
-    B.addBox(4.15, y0 + 0.75, 1.38, 5.55, y0 + 0.88, 1.42, M.anthracite);
+    // Flat-top Plancha Grill (X = 5.28..5.82, cleanly beside the 3 real 3D electric_stove units!)
+    B.addBox(5.28, y0 + 0.92, 0.34, 5.82, y0 + 0.98, 1.26, M.steel);
+    B.addBox(5.28, y0 + 0.98, 0.30, 5.82, y0 + 1.08, 0.36, M.inox); // Grease guard
+    B.addBox(5.32, y0 + 0.75, 1.38, 5.78, y0 + 0.88, 1.42, M.anthracite);
     // Twin Commercial Deep Fryers with Oil Vats & Baskets (X = 5.85..7.45)
     [5.90, 6.72].forEach(fx => {
       B.addBox(fx, y0 + 0.92, 0.36, fx + 0.70, y0 + 0.99, 1.24, M.anthracite);
@@ -3488,15 +3559,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     B.addBox(2.51, y0 + 2.38, 14.74, 2.54, y0 + 2.50, 15.10, M.afriquiaRed);
 
     // E. EAST WALL COMMERCIAL FRIDGES, DRY STORAGE RACKS & DISHWASHING (PLONGE) (X = 7.1..8.2)
-    // Twin Double-Door Upright Stainless Commercial Fridges (Z = 2.3..5.2)
-    [2.35, 3.85].forEach(fz => {
-      B.addBox(7.25, y0, fz, 8.20, y0 + 2.15, fz + 1.32, M.inox, { collide: 'ssol' });
-      B.addBox(7.21, y0 + 0.85, fz + 0.56, 7.25, y0 + 1.55, fz + 0.62, M.anthracite);
-      B.addBox(7.21, y0 + 0.85, fz + 0.70, 7.25, y0 + 1.55, fz + 0.76, M.anthracite);
-      B.addBox(7.21, y0 + 1.96, fz + 0.52, 7.25, y0 + 2.08, fz + 0.80, M.mbBlack); // Digital thermostat
-    });
-    // Multi-tier dry storage shelving with supply crates (Z = 5.4..7.2)
-    B.addBox(7.40, y0, 5.45, 8.20, y0 + 2.05, 7.15, M.steel, { collide: 'ssol' });
+    // Colliders for Real 3D Commercial Glass Fridges (fridge.glb) & Industrial Racks (worn_metal_rack) along East wall!
+    colliders.push({ minX: 7.20, maxX: 8.22, minZ: 2.30, maxZ: 7.20, floor: 'ssol' });
     [0.45, 1.00, 1.55].forEach((sy, sIdx) => {
       B.addBox(7.42, y0 + sy, 5.55, 8.12, y0 + sy + 0.34, 6.20, sIdx % 2 === 0 ? M.afriquiaBlue : M.woodLight);
       B.addBox(7.42, y0 + sy, 6.32, 8.12, y0 + sy + 0.34, 7.02, sIdx % 2 === 0 ? M.afriquiaWhite : M.afriquiaGreen);
@@ -4001,9 +4065,9 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
   };
 
   const TIME_MODES = [
-    { label: '☀️ Soleil', hdrKey: 'day',     fog: 0xdbe5ef, fogDens: 0.0018, sunCol: 0xfff1d8, sunInt: 2.75, sunPos: [-72, 54, -26], hemi: 0.42, fill: 0.35, envInt: 0.90, night: 0.0,  exp: 0.98 },
-    { label: '🌅 Doré',   hdrKey: 'golden',  fog: 0xdcb48e, fogDens: 0.0022, sunCol: 0xffa652, sunInt: 2.85, sunPos: [-92, 22, 26],  hemi: 0.34, fill: 0.22, envInt: 0.85, night: 42.0, exp: 0.94 },
-    { label: '🌙 Soir',   hdrKey: 'evening', fog: 0x0f192d, fogDens: 0.0028, sunCol: 0x8bb6f8, sunInt: 0.45, sunPos: [45, 55, -25],  hemi: 0.22, fill: 0.16, envInt: 0.45, night: 165.0, exp: 1.05 }
+    { label: '☀️ Soleil', hdrKey: 'day',     fog: 0x9ec8f2, fogDens: 0.00065, sunCol: 0xfff6e3, sunInt: 3.15, sunPos: [-68, 62, -24], hemi: 0.50, fill: 0.38, envInt: 1.05, bgInt: 1.15, night: 0.0,   exp: 1.04 },
+    { label: '🌅 Doré',   hdrKey: 'golden',  fog: 0xe8b98a, fogDens: 0.00120, sunCol: 0xffa652, sunInt: 2.95, sunPos: [-92, 22, 26],  hemi: 0.36, fill: 0.24, envInt: 0.92, bgInt: 1.05, night: 42.0,  exp: 0.98 },
+    { label: '🌙 Soir',   hdrKey: 'evening', fog: 0x0e182c, fogDens: 0.00220, sunCol: 0x8bb6f8, sunInt: 0.48, sunPos: [45, 55, -25],  hemi: 0.24, fill: 0.16, envInt: 0.48, bgInt: 0.85, night: 165.0, exp: 1.06 }
   ];
 
   function applyTimeOfDay(idx) {
@@ -4012,7 +4076,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     document.getElementById('btn-time').innerText = t.label;
     if (hdrCache[t.hdrKey]) {
       scene.background = hdrCache[t.hdrKey];
-      scene.backgroundBlurriness = 0.015;
+      scene.backgroundBlurriness = 0.004;
+      scene.backgroundIntensity = t.bgInt || 1.0;
       scene.environment = hdrCache[t.hdrKey];
       scene.environmentIntensity = t.envInt;
       if (skyMesh) skyMesh.visible = false;
@@ -4347,40 +4412,59 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
   // =========================================================================
   // ANIMATE LIVING HUMANS & LIVE TRAFFIC CARS
   // =========================================================================
+  const _qTmp = new THREE.Quaternion(), _eTmp = new THREE.Euler();
+  function rotBone(bone, rx, ry, rz) {
+    if (!bone || !bone.userData.q0) return;
+    _eTmp.set(rx, ry, rz, 'XYZ');
+    _qTmp.setFromEuler(_eTmp);
+    bone.quaternion.copy(bone.userData.q0).multiply(_qTmp);
+  }
+
   function updatePeople(dt, elapsed) {
-    const camX = camera.position.x, camZ = camera.position.z;
     for (let i = 0; i < animatedPeople.length; i++) {
       const p = animatedPeople[i];
-      if (p.type === 'photo_walk') {
+      if (p.mode === 'walk') {
         const dist = Math.hypot(p.x2 - p.x1, p.z2 - p.z1) || 1;
         p.t += (p.speed / dist) * dt * p.dir;
         if (p.t >= 1) { p.t = 1; p.dir = -1; }
         else if (p.t <= 0) { p.t = 0; p.dir = 1; }
         const cx = p.x1 + (p.x2 - p.x1) * p.t;
         const cz = p.z1 + (p.z2 - p.z1) * p.t;
+        const dx = (p.x2 - p.x1) * p.dir, dz = (p.z2 - p.z1) * p.dir;
+        const yaw = Math.atan2(dx, dz);
         p.root.position.set(cx, p.y, cz);
+        p.root.rotation.y = yaw;
 
-        // Direction-aware orientation: face camera cleanly, slightly angled toward walk vector, and mirror left/right naturally!
-        const toCamX = camX - cx, toCamZ = camZ - cz;
-        const camYaw = Math.atan2(toCamX, toCamZ);
-        const vx = ((p.x2 - p.x1) / dist) * p.dir;
-        const vz = ((p.z2 - p.z1) / dist) * p.dir;
-        // Cross product tells if person walks to viewer's right (>0) or left (<0), with smooth deadzone so no flicker!
-        const screenRight = toCamZ * vx - toCamX * vz;
-        if (Math.abs(screenRight) > 0.14) p.curFlip = screenRight > 0 ? 1 : -1;
-        const flip = p.curFlip || 1;
-        p.card.scale.x = flip;
-        p.card.rotation.y = camYaw + flip * 0.22; // Subtle natural 3/4 walking angle!
-
-        // Real-time articulated 3D leg stride, knee lift, arm swing & torso motion!
-        const stridePhase = elapsed * (4.6 + p.speed * 1.15) + p.phase;
-        deformPhotoHuman(p, elapsed, true, stridePhase);
-      } else if (p.type === 'photo_static') {
-        const cx = p.root.position.x, cz = p.root.position.z;
-        p.card.scale.x = p.flipSign || 1;
-        p.card.rotation.y = Math.atan2(camX - cx, camZ - cz);
-        // Living idle animation (breathing, weight shift, subtle arm gestures & head glances!)
-        deformPhotoHuman(p, elapsed, false, 0);
+        // Real 3D UE5 skeletal bone walk cycle for man_rigged.glb!
+        if (p.bones) {
+          const ph = elapsed * (4.4 + p.speed * 1.1) + p.phase;
+          const sw = Math.sin(ph);
+          const bob = Math.abs(sw) * 0.028;
+          p.root.position.y = p.y + bob;
+          rotBone(p.bones.thigh_l,  sw * 0.42, 0, 0);
+          rotBone(p.bones.thigh_r, -sw * 0.42, 0, 0);
+          rotBone(p.bones.calf_l,   Math.max(0.05, -Math.sin(ph - 0.35) * 0.58), 0, 0);
+          rotBone(p.bones.calf_r,   Math.max(0.05,  Math.sin(ph - 0.35) * 0.58), 0, 0);
+          // Relax UE5 A-pose arms cleanly down to sides + natural counter-phase swing!
+          rotBone(p.bones.upperarm_l, -sw * 0.32, 0, -0.58);
+          rotBone(p.bones.upperarm_r,  sw * 0.32, 0,  0.58);
+          rotBone(p.bones.lowerarm_l, -0.18 - Math.max(0,  sw * 0.22), 0, 0);
+          rotBone(p.bones.lowerarm_r, -0.18 - Math.max(0, -sw * 0.22), 0, 0);
+          rotBone(p.bones.spine_02, 0.03, -sw * 0.08, 0);
+          rotBone(p.bones.head, Math.sin(elapsed * 0.7 + p.phase) * 0.04, Math.sin(elapsed * 0.5 + p.phase) * 0.12, 0);
+        }
+      } else if (p.bones) {
+        // Real 3D UE5 skeletal living idle (Afriquia pump attendants, Chefs, Office staff!)
+        const br = Math.sin(elapsed * 1.8 + p.phase);
+        const gl = Math.sin(elapsed * 0.65 + p.phase * 1.3);
+        const wk = Math.sin(elapsed * 2.0 + p.phase);
+        const isWorker = (p.kind === 'afriquia' || p.kind === 'chef');
+        rotBone(p.bones.spine_02, br * 0.025, gl * 0.06, 0);
+        rotBone(p.bones.head, br * 0.03, gl * 0.24, 0);
+        rotBone(p.bones.upperarm_l, isWorker ? (-0.28 + wk * 0.14) : 0.04, 0, -0.62);
+        rotBone(p.bones.upperarm_r, isWorker ? (-0.34 - wk * 0.16) : -0.04, 0,  0.62);
+        rotBone(p.bones.lowerarm_l, isWorker ? -0.42 : -0.14, 0, 0);
+        rotBone(p.bones.lowerarm_r, isWorker ? -0.48 : -0.14, 0, 0);
       }
     }
   }
