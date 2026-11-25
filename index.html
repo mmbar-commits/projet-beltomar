@@ -2257,6 +2257,92 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     geo.dispose();
   }
 
+  // =========================================================================
+  // REALISTIC ARCHITECTURAL SANITARY FIXTURES (Toilets, Urinals, Sinks & Mirrors — Batched!)
+  // =========================================================================
+  function addToiletFixture(B, x, y, z, facing, M, floor) {
+    // facing: '-X' (back against East wall +X), '+X' (back against West wall -X), '-Z' (back against South wall), '+Z' (back against North wall)
+    const dirX = facing === '+X' ? 1 : (facing === '-X' ? -1 : 0);
+    const dirZ = facing === '+Z' ? 1 : (facing === '-Z' ? -1 : 0);
+    const perpX = dirZ !== 0 ? 1 : 0, perpZ = dirX !== 0 ? 1 : 0;
+    const put = (fwd1, fwd2, y1, y2, side1, side2, mat, col = false) => {
+      const ax = x + dirX * fwd1 + perpX * side1, bx = x + dirX * fwd2 + perpX * side2;
+      const az = z + dirZ * fwd1 + perpZ * side1, bz = z + dirZ * fwd2 + perpZ * side2;
+      B.addBox(ax, y + y1, az, bx, y + y2, bz, mat, col ? { collide: floor } : {});
+    };
+    // Porcelain flush cistern tank against wall
+    put(0.02, 0.22, 0.36, 0.84, -0.20, 0.20, M.afriquiaWhite, true);
+    // Chrome dual-flush push button on cistern top
+    put(0.09, 0.15, 0.84, 0.865, -0.05, 0.05, M.inox);
+    // Sculpted ceramic pedestal base
+    put(0.18, 0.56, 0.00, 0.36, -0.14, 0.14, M.afriquiaWhite, true);
+    // Porcelain bowl body & inner dark basin recess
+    put(0.20, 0.68, 0.30, 0.42, -0.19, 0.19, M.afriquiaWhite);
+    put(0.26, 0.62, 0.415, 0.432, -0.13, 0.13, M.anthracite);
+    // Toilet seat ring & open upright lid against tank
+    put(0.22, 0.67, 0.42, 0.445, -0.185, 0.185, M.afriquiaWhite);
+    put(0.22, 0.255, 0.44, 0.82, -0.175, 0.175, M.afriquiaWhite);
+    // Wall-mounted chrome toilet paper holder on side
+    put(0.32, 0.44, 0.60, 0.72, 0.26, 0.35, M.afriquiaWhite);
+    put(0.30, 0.46, 0.71, 0.735, 0.26, 0.36, M.inox);
+  }
+
+  function addUrinalFixture(B, x, y, z, facing, M, floor) {
+    const dirX = facing === '+X' ? 1 : (facing === '-X' ? -1 : 0);
+    const dirZ = facing === '+Z' ? 1 : (facing === '-Z' ? -1 : 0);
+    const perpX = dirZ !== 0 ? 1 : 0, perpZ = dirX !== 0 ? 1 : 0;
+    const put = (fwd1, fwd2, y1, y2, side1, side2, mat, col = false) => {
+      const ax = x + dirX * fwd1 + perpX * side1, bx = x + dirX * fwd2 + perpX * side2;
+      const az = z + dirZ * fwd1 + perpZ * side1, bz = z + dirZ * fwd2 + perpZ * side2;
+      B.addBox(ax, y + y1, az, bx, y + y2, bz, mat, col ? { collide: floor } : {});
+    };
+    put(0.02, 0.14, 0.52, 1.24, -0.17, 0.17, M.afriquiaWhite, true);
+    put(0.14, 0.34, 0.52, 0.70, -0.16, 0.16, M.afriquiaWhite);
+    put(0.10, 0.28, 0.68, 1.05, -0.11, 0.11, M.wallRoof);
+    put(0.02, 0.08, 1.24, 1.38, -0.025, 0.025, M.inox); // Chrome flush pipe & sensor
+    put(0.02, 0.05, 1.36, 1.46, -0.06, 0.06, M.anthracite);
+  }
+
+  function addVanityWashStation(B, wallCoord, startSpan, endSpan, y, axis, facingSign, count, M, floor) {
+    // axis='Z': vanity runs along Z (wall at X=wallCoord, facingSign=+1 extends into +X, -1 extends into -X)
+    // axis='X': vanity runs along X (wall at Z=wallCoord, facingSign=+1 extends into +Z, -1 extends into -Z)
+    const depth = 0.56, hTop = 0.86;
+    const add = (d1, d2, y1, y2, s1, s2, mat, col = false) => {
+      if (axis === 'Z') {
+        B.addBox(wallCoord + facingSign * d1, y + y1, s1, wallCoord + facingSign * d2, y + y2, s2, mat, col ? { collide: floor } : {});
+      } else {
+        B.addBox(s1, y + y1, wallCoord + facingSign * d1, s2, y + y2, wallCoord + facingSign * d2, mat, col ? { collide: floor } : {});
+      }
+    };
+    // Vanity countertop + lower apron + support legs
+    add(0.0, depth, hTop - 0.12, hTop, startSpan, endSpan, M.terrazzo, true);
+    add(0.04, depth - 0.06, 0.0, hTop - 0.12, startSpan + 0.05, startSpan + 0.14, M.anthracite);
+    add(0.04, depth - 0.06, 0.0, hTop - 0.12, endSpan - 0.14, endSpan - 0.05, M.anthracite);
+    // Wall-mounted framed mirror + warm top LED strip
+    add(0.0, 0.04, 1.08, 2.04, startSpan + 0.06, endSpan - 0.06, M.anthracite);
+    add(0.03, 0.055, 1.12, 2.00, startSpan + 0.10, endSpan - 0.10, M.inox);
+    add(0.02, 0.08, 2.04, 2.10, startSpan + 0.14, endSpan - 0.14, M.ledWarm);
+    // Wall electric hand dryer next to vanity end
+    add(0.0, 0.18, 1.08, 1.38, endSpan + 0.18, endSpan + 0.44, M.afriquiaWhite);
+    add(0.04, 0.14, 1.05, 1.09, endSpan + 0.24, endSpan + 0.38, M.anthracite);
+
+    // Individual recessed ceramic washbasins, chrome faucets & soap dispensers
+    const step = (endSpan - startSpan) / count;
+    for (let i = 0; i < count; i++) {
+      const sc = startSpan + (i + 0.5) * step;
+      // Ceramic counter-top basin rim & interior bowl
+      add(0.10, 0.48, hTop, hTop + 0.11, sc - 0.24, sc + 0.24, M.afriquiaWhite);
+      add(0.15, 0.43, hTop + 0.095, hTop + 0.115, sc - 0.18, sc + 0.18, M.wallRoof);
+      // Chrome mixer faucet + spout
+      add(0.04, 0.10, hTop, hTop + 0.22, sc - 0.022, sc + 0.022, M.inox);
+      add(0.06, 0.20, hTop + 0.18, hTop + 0.22, sc - 0.018, sc + 0.018, M.inox);
+      // Wall soap dispenser beside faucet
+      add(0.0, 0.09, hTop + 0.14, hTop + 0.30, sc + 0.24, sc + 0.32, M.afriquiaWhite);
+      // Under-sink chrome siphon pipe
+      add(0.22, 0.28, 0.42, hTop - 0.12, sc - 0.03, sc + 0.03, M.inox);
+    }
+  }
+
   function addSpiralStairBatched(B, cx, cz, yBot, yTop, steelMat, treadMat, shopName, entryAngle = Math.PI) {
     const h = yTop - yBot, r = 0.88, steps = 16;
     const poleGeo = new THREE.CylinderGeometry(0.075, 0.075, h + 1.0, 10);
@@ -3219,6 +3305,12 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     addWallDoor(B, 'X', -19.2, -1.6, sx2, 0.12, sH, 0.16, M.wallInt, 0.2, 1.2, 2.2, 'rdc', false);
     addWallDoor(B, 'Z', 1.6, -19.2, -14.2, 0.12, sH, 0.14, M.wallInt, -16.8, -15.5, 2.2, 'rdc', false);
     B.addBox(1.6, 0.13, -19.1, 4.7, 0.16, -14.3, M.carpet, { uvScale: 0.45 });
+    // Public Afriquia Station Restrooms & Ablutions (X = -1.5..1.5, Z = -19.1..-12.7)!
+    B.addBox(-1.5, 0.12, -16.8, -0.1, 2.25, -16.7, M.wallWarm, { collide: 'rdc' });
+    addToiletFixture(B, -1.48, 0.12, -17.95, '+X', M, 'rdc');
+    addToiletFixture(B, -1.48, 0.12, -15.55, '+X', M, 'rdc');
+    addVanityWashStation(B, 1.48, -18.7, -15.0, 0.12, 'Z', -1, 2, M, 'rdc');
+    registerLabel('Sanitaires Station', 'WC / Ablutions', 0.0, 2.3, -16.5, 'rdc', 20);
     addWallDoor(B, 'Z', -0.8, -12.6, -6.5, 0.12, sH, 0.16, M.wallInt, -11.4, -10.3, 2.2, 'rdc', false);
 
     // Exterior Terrace Tables & Stools Colliders (Replaced by real Poly Haven 3D coffee_table_round_01 + bar_chair_round_01!)
@@ -3309,16 +3401,121 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     B.addBox(MALL_LWING_X - 0.22, y0, 53.4, MALL_FRONT_X, y1, 53.6, M.wallBasement, { collide: 'ssol' });
 
     addWallDoor(B, 'X', SHOP_START_Z, MALL_FRONT_X, MALL_BACK_X, y0, y1, 0.20, M.wallGreen, 1.4, 3.0, 2.35, 'ssol', false);
-    B.addBox(0.4, y0, 0.6, 7.6, y0 + 0.96, 1.5, M.inox, { collide: 'ssol' });
-    B.addBox(0.5, y0 + 2.15, 0.4, 7.5, y0 + 2.85, 1.6, M.inox);
-    B.addBox(1.4, y0, 3.2, 5.6, y0 + 0.94, 4.4, M.inox, { collide: 'ssol' });
-    B.addBox(1.4, y0, 12.2, 5.8, y0 + 0.94, 13.4, M.inox, { collide: 'ssol' });
-    B.addBox(0.1, y0, 13.8, 2.4, y1 - 0.2, 16.2, M.inox, { collide: 'ssol' });
-    B.addBox(7.3, y0, 2.4, 8.1, y0 + 2.1, 6.2, M.steel, { collide: 'ssol' });
-    B.addBox(7.3, y0, 12.0, 8.1, y0 + 2.1, 15.8, M.steel, { collide: 'ssol' });
+
+    // =========================================================================
+    // FULL COMMERCIAL DARK KITCHEN (125 m²) — Hot Cooking Line, Extractor Hood,
+    // Gas Stoves, Fryers, Prep & Pass Islands, KDS Screens, Walk-in Freezer & Dishwashing!
+    // =========================================================================
+    // A. HOT COOKING LINE along North wall (Z = 0.25..1.45, X = 0.4..7.6)
+    B.addBox(0.35, y0, 0.18, 7.65, y0 + 0.92, 1.38, M.inox, { collide: 'ssol' });
+    B.addBox(0.35, y0 + 0.92, 0.14, 7.65, y0 + 1.42, 0.22, M.inox); // Stainless grease backsplash
+    // 2× Commercial 6-Burner Gas Ranges + Lower Convection Ovens (X = 0.5..3.9)
+    [0.55, 2.25].forEach(rx => {
+      B.addBox(rx, y0 + 0.92, 0.30, rx + 1.50, y0 + 0.99, 1.28, M.anthracite); // Cast-iron stove top
+      for (let bx = 0; bx < 3; bx++) {
+        for (let bz = 0; bz < 2; bz++) {
+          B.addBox(rx + 0.14 + bx * 0.46, y0 + 0.99, 0.42 + bz * 0.44, rx + 0.46 + bx * 0.46, y0 + 1.03, 0.74 + bz * 0.44, M.steel);
+        }
+      }
+      // Front control panel + dials + oven door handle
+      B.addBox(rx + 0.04, y0 + 0.72, 1.38, rx + 1.46, y0 + 0.88, 1.42, M.anthracite);
+      for (let k = 0; k < 6; k++) B.addBox(rx + 0.14 + k * 0.22, y0 + 0.77, 1.42, rx + 0.22 + k * 0.22, y0 + 0.83, 1.46, M.steel);
+      B.addBox(rx + 0.12, y0 + 0.16, 1.38, rx + 1.38, y0 + 0.66, 1.41, M.steel); // Oven door
+      B.addBox(rx + 0.24, y0 + 0.58, 1.41, rx + 1.26, y0 + 0.63, 1.47, M.inox);  // Oven handle
+    });
+    // Flat-top Plancha Grill (X = 4.05..5.65)
+    B.addBox(4.05, y0 + 0.92, 0.34, 5.65, y0 + 0.98, 1.26, M.steel);
+    B.addBox(4.05, y0 + 0.98, 0.30, 5.65, y0 + 1.08, 0.36, M.inox); // Grease guard
+    B.addBox(4.15, y0 + 0.75, 1.38, 5.55, y0 + 0.88, 1.42, M.anthracite);
+    // Twin Commercial Deep Fryers with Oil Vats & Baskets (X = 5.85..7.45)
+    [5.90, 6.72].forEach(fx => {
+      B.addBox(fx, y0 + 0.92, 0.36, fx + 0.70, y0 + 0.99, 1.24, M.anthracite);
+      B.addBox(fx + 0.08, y0 + 0.96, 0.44, fx + 0.62, y0 + 1.04, 1.10, M.steel); // Fryer basket
+      B.addBox(fx + 0.30, y0 + 1.02, 1.10, fx + 0.40, y0 + 1.08, 1.36, M.afriquiaOrange); // Insulated handle
+      B.addBox(fx + 0.12, y0 + 0.78, 1.38, fx + 0.22, y0 + 0.84, 1.43, M.afriquiaRed); // Power switch
+    });
+    // Massive Commercial Stainless Extractor Hood (Hotte Aspirante) + Baffle Filters + Exhaust Ducts + Under-Hood LEDs!
+    B.addBox(0.35, y0 + 2.12, 0.15, 7.65, y0 + 2.86, 1.58, M.inox);
+    for (let fx = 0.65; fx <= 7.15; fx += 0.65) {
+      B.addBox(fx, y0 + 2.16, 0.25, fx + 0.54, y0 + 2.52, 0.42, M.anthracite); // Angled grease baffle filter
+    }
+    B.addBox(0.65, y0 + 2.10, 1.32, 7.35, y0 + 2.13, 1.44, M.ledWarm); // Bright task lights under hood
+    [1.8, 5.8].forEach(dx => B.addBox(dx - 0.35, y0 + 2.86, 0.42, dx + 0.35, y1, 1.05, M.aluminum)); // Galvanized exhaust ducts
+
+    // B. CENTRAL PREP & PLATING ISLAND #1 (X = 1.2..5.8, Z = 3.2..4.4) + Sink + Overhead Pass Shelf!
+    B.addBox(1.2, y0 + 0.86, 3.2, 5.8, y0 + 0.94, 4.4, M.inox, { collide: 'ssol' });
+    B.addBox(1.28, y0 + 0.22, 3.28, 5.72, y0 + 0.27, 4.32, M.steel); // Lower undershelf
+    [[1.25, 3.25], [1.25, 4.35], [3.5, 3.25], [3.5, 4.35], [5.75, 3.25], [5.75, 4.35]].forEach(([lx, lz]) => {
+      B.addBox(lx - 0.035, y0, lz - 0.035, lx + 0.035, y0 + 0.88, lz + 0.035, M.inox);
+    });
+    // Prep sink bowl + tall commercial chrome gooseneck faucet on West end of Island #1
+    B.addBox(1.38, y0 + 0.90, 3.44, 2.12, y0 + 0.955, 4.16, M.anthracite);
+    B.addBox(1.32, y0 + 0.94, 3.76, 1.38, y0 + 1.48, 3.84, M.inox);
+    B.addBox(1.32, y0 + 1.42, 3.76, 1.66, y0 + 1.48, 3.84, M.inox);
+    // HACCP cutting boards (green/red/white) + Gastronorm stainless pans
+    B.addBox(2.45, y0 + 0.94, 3.36, 2.95, y0 + 0.97, 3.76, M.afriquiaGreen);
+    B.addBox(3.15, y0 + 0.94, 3.36, 3.65, y0 + 0.97, 3.76, M.afriquiaRed);
+    [4.05, 4.55, 5.05].forEach(gx => B.addBox(gx, y0 + 0.94, 3.45, gx + 0.36, y0 + 1.06, 4.12, M.aluminum));
+    // Overhead stainless pass-through gantry shelf + food warmers
+    [[1.35, 3.78], [3.50, 3.78], [5.65, 3.78]].forEach(([px, pz]) => B.addBox(px - 0.025, y0 + 0.94, pz - 0.025, px + 0.025, y0 + 1.58, pz + 0.025, M.inox));
+    B.addBox(1.32, y0 + 1.54, 3.56, 5.68, y0 + 1.60, 4.00, M.inox);
+    B.addBox(2.20, y0 + 1.51, 3.74, 5.20, y0 + 1.54, 3.82, M.ledWarm); // Heat lamp bar
+
+    // C. DELIVERY DISPATCH & PACKAGING ISLAND #2 (X = 2.7..6.1, Z = 12.2..13.4) + KDS Order Screens & Delivery Bags!
+    B.addBox(2.7, y0 + 0.86, 12.2, 6.1, y0 + 0.94, 13.4, M.inox, { collide: 'ssol' });
+    B.addBox(2.78, y0 + 0.22, 12.28, 6.02, y0 + 0.27, 13.32, M.steel);
+    [[2.75, 12.25], [2.75, 13.35], [6.05, 12.25], [6.05, 13.35]].forEach(([lx, lz]) => {
+      B.addBox(lx - 0.035, y0, lz - 0.035, lx + 0.035, y0 + 0.88, lz + 0.035, M.inox);
+    });
+    // Overhead KDS (Kitchen Display System) order monitors + kraft bags & thermal delivery boxes
+    [3.6, 5.1].forEach(kx => {
+      B.addBox(kx - 0.03, y0 + 1.58, 12.77, kx + 0.03, y1, 12.83, M.anthracite);
+      B.addBox(kx - 0.34, y0 + 1.48, 12.74, kx + 0.34, y0 + 1.90, 12.86, M.mbBlack);
+      B.addBox(kx - 0.30, y0 + 1.52, 12.73, kx + 0.30, y0 + 1.86, 12.87, M.afriquiaBlue); // Lit KDS screen!
+    });
+    B.addBox(2.95, y0 + 0.94, 12.45, 3.45, y0 + 1.24, 12.95, M.woodLight); // Stacked kraft delivery bags
+    B.addBox(3.65, y0 + 0.94, 12.50, 4.15, y0 + 1.22, 13.00, M.woodLight);
+    B.addBox(4.80, y0 + 0.94, 12.40, 5.45, y0 + 1.38, 13.05, M.mbYellow);  // Insulated thermal delivery bag!
+
+    // D. WALK-IN COLD ROOM / CHAMBRE FROIDE (SW corner X = 0.05..2.45, Z = 13.6..16.35)
+    B.addBox(0.05, y0, 13.6, 2.45, y1 - 0.12, 16.35, M.afriquiaWhite, { collide: 'ssol' });
+    B.addBox(0.05, y0, 13.56, 2.48, y0 + 0.25, 16.36, M.inox); // Stainless kickplate
+    // Heavy insulated freezer door on East face (X = 2.45, Z = 14.3..15.5) + porthole + digital thermometer!
+    B.addBox(2.43, y0 + 0.04, 14.30, 2.54, y0 + 2.22, 15.50, M.inox);
+    B.addBox(2.53, y0 + 0.95, 14.38, 2.60, y0 + 1.30, 14.48, M.anthracite); // Heavy freezer latch handle
+    B.addBox(2.53, y0 + 1.48, 14.74, 2.57, y0 + 1.84, 15.10, M.glass);      // Inspection window
+    B.addBox(2.45, y0 + 2.34, 14.68, 2.52, y0 + 2.54, 15.16, M.mbBlack);    // Digital temp display (-18°C)
+    B.addBox(2.51, y0 + 2.38, 14.74, 2.54, y0 + 2.50, 15.10, M.afriquiaRed);
+
+    // E. EAST WALL COMMERCIAL FRIDGES, DRY STORAGE RACKS & DISHWASHING (PLONGE) (X = 7.1..8.2)
+    // Twin Double-Door Upright Stainless Commercial Fridges (Z = 2.3..5.2)
+    [2.35, 3.85].forEach(fz => {
+      B.addBox(7.25, y0, fz, 8.20, y0 + 2.15, fz + 1.32, M.inox, { collide: 'ssol' });
+      B.addBox(7.21, y0 + 0.85, fz + 0.56, 7.25, y0 + 1.55, fz + 0.62, M.anthracite);
+      B.addBox(7.21, y0 + 0.85, fz + 0.70, 7.25, y0 + 1.55, fz + 0.76, M.anthracite);
+      B.addBox(7.21, y0 + 1.96, fz + 0.52, 7.25, y0 + 2.08, fz + 0.80, M.mbBlack); // Digital thermostat
+    });
+    // Multi-tier dry storage shelving with supply crates (Z = 5.4..7.2)
+    B.addBox(7.40, y0, 5.45, 8.20, y0 + 2.05, 7.15, M.steel, { collide: 'ssol' });
+    [0.45, 1.00, 1.55].forEach((sy, sIdx) => {
+      B.addBox(7.42, y0 + sy, 5.55, 8.12, y0 + sy + 0.34, 6.20, sIdx % 2 === 0 ? M.afriquiaBlue : M.woodLight);
+      B.addBox(7.42, y0 + sy, 6.32, 8.12, y0 + sy + 0.34, 7.02, sIdx % 2 === 0 ? M.afriquiaWhite : M.afriquiaGreen);
+    });
+    // Commercial Dishwashing Station / Plonge (Z = 11.8..15.9, X = 7.15..8.20): Hood Dishwasher + Drainboards + Hand Sink!
+    B.addBox(7.20, y0, 11.85, 8.20, y0 + 0.92, 15.85, M.inox, { collide: 'ssol' });
+    B.addBox(7.22, y0 + 0.92, 13.10, 8.18, y0 + 1.98, 14.30, M.inox); // Pass-through hood dishwasher
+    B.addBox(7.16, y0 + 1.38, 13.20, 7.22, y0 + 1.45, 14.20, M.anthracite); // Pull-down hood bar
+    B.addBox(7.35, y0 + 0.90, 12.05, 8.05, y0 + 0.96, 12.90, M.anthracite); // Pre-rinse sink bowl
+    B.addBox(7.98, y0 + 0.94, 12.44, 8.06, y0 + 1.65, 12.52, M.inox); // Tall spray hose column
+    B.addBox(7.52, y0 + 1.58, 12.44, 8.06, y0 + 1.65, 12.52, M.inox);
+    B.addBox(7.95, y0 + 1.18, 15.10, 8.20, y0 + 1.55, 15.55, M.afriquiaWhite); // Wall paper towel dispenser
+
     [3.8, 13.0].forEach(lz => B.addBox(1.0, y1 - 0.04, lz - 0.16, 6.8, y1, lz + 0.16, M.ledWhite));
 
-    // Stair 2: Dark Kitchen U-Staircase — FIXED to reach 100% flush to Sous-sol floor (Y = -3.40m)!
+    // =========================================================================
+    // Stair 2: Dark Kitchen U-Staircase — FULLY ENCLOSED SIDES IN SOUS-SOL!
+    // (Prevents ever walking into the side of the stairs & getting trapped! Only East foot Z=9.30..10.80 is open!)
+    // =========================================================================
     const stepsDK = 10;
     const stepH = 1.70 / stepsDK; // 0.17m per riser
     const stepW = 2.55 / stepsDK; // 0.255m per tread
@@ -3330,13 +3527,17 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
       // Lower flight: West mid-landing (Y=-1.70, X=3.15) -> Sous-sol floor (Y=-3.40, X=5.70)
       const yTopB = -1.70 - (i + 1) * stepH;
       const x1B = 3.15 + i * stepW - 0.04, x2B = 3.15 + (i + 1) * stepW;
-      // Solid concrete support down to Sous-sol floor on lower flight so steps meet the floor cleanly!
       B.addBox(x1B, Math.max(y0, yTopB - 0.22), 9.30, x2B, yTopB + stepH, 10.80, M.wallConcrete);
     }
-    // Mid-landing & center balustrade spine
+    // Mid-landing slab
     B.addBox(1.95, -1.92, 7.65, 3.18, -1.70, 10.85, M.wallConcrete);
-    B.addBox(3.15, y0, 9.15, 5.75, Y_RDC + 0.92, 9.30, M.wallInt);
-    B.addBox(1.85, y0, 7.60, 1.97, y1, 10.90, M.wallGreen);
+    // SOLID ENCLOSED STAIRWELL WALLS ON ALL 3 SIDES + UNDER UPPER FLIGHT (Zero accidental side entry!)
+    B.addBox(1.82, y0, 7.52, 5.84, y1, 7.68, M.wallGreen, { collide: 'ssol' });  // North stairwell wall
+    B.addBox(1.82, y0, 10.82, 5.84, y1, 10.98, M.wallGreen, { collide: 'ssol' }); // South stairwell wall
+    B.addBox(1.82, y0, 7.52, 1.98, y1, 10.98, M.wallGreen, { collide: 'ssol' });  // West stairwell back wall
+    B.addBox(5.72, y0, 7.52, 5.88, y1, 9.28, M.wallGreen, { collide: 'ssol' });   // East wall closing under upper flight!
+    // Center divider spine between upper & lower flights (solid in Sous-sol so flights stay cleanly separated!)
+    B.addBox(3.22, y0, 9.15, 5.75, Y_RDC + 0.92, 9.30, M.wallInt, { collide: 'ssol' });
 
     stairZones.push(
       { minX: 3.10, maxX: 5.85, minZ: 7.60, maxZ: 9.20, fromY: Y_RDC, toY: -1.70, axis: 'X', startCoord: 5.70, endCoord: 3.15, floors: ['rdc', 'ssol'] },
@@ -3428,7 +3629,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
       B.addBox(x1B, yTopB - 0.20, 6.18, x2B, yTopB, 7.46, M.terrazzo);
     }
     B.addBox(6.62, 1.88, 4.72, 7.88, 2.08, 7.50, M.terrazzo);
-    B.addBox(4.35, y0, 6.02, 6.65, Y_ETAGE + 0.95, 6.18, M.wallInt);
+    B.addBox(4.35, y0, 6.02, 6.65, Y_ETAGE + 0.95, 6.18, M.wallInt, { collide: 'rdc' });
     addWallDoor(B, 'X', 7.55, 1.95, MALL_BACK_X, y0, y1, 0.16, M.wallInt, 6.05, 7.25, 2.35, 'rdc', false);
 
     stairZones.push(
@@ -3444,8 +3645,10 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     B.addBox(3.72, y0, 12.2, 3.88, y1, 16.5, M.wallInt, { collide: 'rdc' });
     addWallDoor(B, 'Z', MALL_BACK_X, 12.2, 16.5, y0, y1, 0.2, M.wallExt, 13.6, 14.8, 2.2, 'rdc');
     B.addBox(MALL_FRONT_X, y0, 16.42, MALL_BACK_X, y1, 16.58, M.wallInt, { collide: 'rdc' });
-    B.addBox(4.3, y0, 12.6, 4.9, y0 + 2.0, 15.8, M.steel, { collide: 'rdc' });
-    B.addBox(6.2, y0, 12.6, 6.8, y0 + 2.0, 15.8, M.steel, { collide: 'rdc' });
+    B.addBox(4.1, y0, 12.6, 4.65, y0 + 2.0, 15.8, M.steel, { collide: 'rdc' });
+    B.addBox(6.2, y0, 12.6, 6.75, y0 + 2.0, 15.8, M.steel, { collide: 'rdc' });
+    B.addBox(5.15, y0, 13.0, 5.60, y0 + 0.46, 15.4, M.woodWarm, { collide: 'rdc' }); // Changing bench
+    addVanityWashStation(B, 12.32, 7.1, 8.1, y0, 'X', 1, 1, M, 'rdc'); // Staff sanitary washbasin
     registerLabel('Boutique', '15 m²', 1.9, 2.3, 14.3, 'rdc', 22);
     registerLabel('Vestiaires Cuisine', 'H / F', 6.0, 2.3, 14.3, 'rdc', 20);
 
@@ -3468,8 +3671,11 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     // Corner safety collider
     colliders.push({ minX: MALL_BACK_X - 0.6, maxX: MALL_BACK_X + 0.2, minZ: MALL_END_Z - 0.6, maxZ: MALL_END_Z + 0.2, floor: 'rdc' });
 
-    B.addBox(4.3, y0, 56.8, 6.0, y0 + 2.2, 57.0, M.wallWarm, { collide: 'rdc' });
-    B.addBox(6.6, y0, 54.5, 7.4, y0 + 0.88, 57.2, M.inox, { collide: 'rdc' });
+    // Full Sanitary Fixtures in RDC WC Employés H / F (2 Cabins + Ceramic Toilets + Vanity Sinks + Mirror + Dryer!)
+    B.addBox(4.3, y0, 56.8, 6.1, y0 + 2.15, 56.96, M.wallWarm, { collide: 'rdc' }); // Divider between H / F cabins
+    addToiletFixture(B, 4.30, y0, 55.65, '+X', M, 'rdc');
+    addToiletFixture(B, 4.30, y0, 58.15, '+X', M, 'rdc');
+    addVanityWashStation(B, MALL_BACK_X - 0.14, 54.4, 56.8, y0, 'Z', -1, 2, M, 'rdc');
     registerLabel('WC Employés', 'H / F', 6.2, 2.3, 56.8, 'rdc', 20);
 
     addStorefrontBatched(B, 'X', 53.6, -3.4, 0.0, y0, y1, M.anthracite, M.glass, 1.8, 'rdc');
@@ -3556,8 +3762,23 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     addWallDoor(B, 'Z', 3.4, 8.0, 16.5, y0, y1, 0.16, M.wallInt, 8.8, 10.0, 2.25, 'etage', false);
     B.addBox(3.4, y0, 7.92, MALL_BACK_X, y1, 8.08, M.wallInt, { collide: 'etage' });
     B.addBox(3.4, y0, 16.4, MALL_BACK_X, y1, 16.6, M.wallInt, { collide: 'etage' });
-    [9.8, 11.4, 13.0].forEach(wz => B.addBox(6.4, y0, wz, 8.2, y0 + 2.1, wz + 0.1, M.wallWarm, { collide: 'etage' }));
-    B.addBox(4.4, y0, 9.6, 5.2, y0 + 0.88, 13.4, M.inox, { collide: 'etage' });
+    // Full Upscale Sanitary Fixtures in 1er Étage Sanitaires (3 WC Cabins + Toilets + 2 Urinals + 3-Sink Vanity + Mirror + Dryer!)
+    [9.8, 11.4, 13.0].forEach(wz => {
+      B.addBox(6.4, y0, wz, 8.2, y0 + 2.15, wz + 0.10, M.wallWarm, { collide: 'etage' });
+      // Cabin front stile & ajar privacy door
+      B.addBox(6.38, y0, wz - 0.16, 6.48, y0 + 2.15, wz + 0.10, M.anthracite);
+    });
+    [9.0, 10.6, 12.2].forEach(tz => {
+      addToiletFixture(B, MALL_BACK_X - 0.12, y0, tz, '-X', M, 'etage');
+      // Open cabin door leaf swung inward slightly
+      B.addBox(6.42, y0 + 0.12, tz - 0.56, 7.05, y0 + 2.02, tz - 0.52, M.woodLight);
+    });
+    // 2 Wall-mounted ceramic urinals + privacy divider (Z = 13.8..15.8)
+    addUrinalFixture(B, MALL_BACK_X - 0.12, y0, 14.1, '-X', M, 'etage');
+    B.addBox(7.55, y0 + 0.55, 14.70, 8.20, y0 + 1.55, 14.78, M.wallWarm);
+    addUrinalFixture(B, MALL_BACK_X - 0.12, y0, 15.4, '-X', M, 'etage');
+    // Full 3-Basin Vanity Counter + Backlit Mirror + Hand Dryer against West wall (leaving 1.9m clear aisle!)
+    addVanityWashStation(B, 3.52, 10.4, 14.6, y0, 'Z', 1, 3, M, 'etage');
     registerLabel('Sanitaires Étage', 'WC F / H', 5.8, y0 + 2.2, 11.6, 'etage', 22);
 
     addStorefrontBatched(B, 'X', 16.5, 0.0, 3.2, y0, y1, M.anthracite, M.glass, 1.9, 'etage');
@@ -3646,7 +3867,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     shop31:       { mode: 'walk', pos: [1.8, Y_RDC + EYE_H, 26.8], yaw: -1.55, pitch: -0.02, floor: 'rdc', badge: 'RDC · Boutique 31m² & Colimaçon' },
     palms:        { mode: 'walk', pos: [-9.8, Y_RDC + EYE_H, 46.2], yaw: -2.42, pitch: 0.05, floor: 'rdc', badge: 'RDC · Cour des Palmiers' },
     stairs_rdc:   { mode: 'walk', pos: [1.8, Y_RDC + EYE_H, 5.8], yaw: -1.52, pitch: 0.06, floor: 'rdc', badge: 'RDC · Hall Accès Étage' },
-    dark_kitchen: { mode: 'walk', pos: [4.2, Y_SSOL + EYE_H, 11.2], yaw: 0.15, pitch: -0.02, floor: 'ssol', badge: 'Sous-sol · Dark Kitchen (125 m²)' },
+    dark_kitchen: { mode: 'walk', pos: [4.0, Y_SSOL + EYE_H, 6.2], yaw: 0.10, pitch: -0.04, floor: 'ssol', badge: 'Sous-sol · Dark Kitchen (125 m²)' },
     ssol_units:   { mode: 'walk', pos: [2.0, Y_SSOL + EYE_H, 22.8], yaw: 2.85, pitch: -0.02, floor: 'ssol', badge: 'Sous-sol · Réserves 31 m²' },
     ssol_corner:  { mode: 'walk', pos: [2.2, Y_SSOL + EYE_H, 56.5], yaw: 1.55, pitch: 0.0, floor: 'ssol', badge: 'Sous-sol · Angle 75 m²' },
     etage_admin:  { mode: 'walk', pos: [1.4, Y_ETAGE + EYE_H, 6.8], yaw: -0.25, pitch: 0.0, floor: 'etage', badge: '1er Étage · Coursive & Admin' },
