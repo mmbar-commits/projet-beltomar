@@ -414,6 +414,7 @@
   const spiralStairs = [];  // Seamless walkable helical spiral staircases!
   const labels3D = [];
   const animatedPeople = [];
+  const animatedCars = [];
 
   let navMode = 'walk';     // 'walk' | 'suv' | 'orbit'
   let thirdPerson = false;  // false = 1st-person (eye / SUV cockpit), true = 3rd-person (see avatar / SUV!)
@@ -1389,60 +1390,130 @@
   }
 
   // =========================================================================
-  // PHOTOREALISTIC ANATOMICAL HUMANS & FAMILIES (Sculpted Lathe + Portrait Face + Tailored Cloth!)
+  // PHOTOREALISTIC ARCHITECTURAL HUMANS & FAMILIES (Tailored Garments, Sculpted Anatomy, Matte Fabric & Natural Gait!)
   // =========================================================================
   const humanTexCache = new Map();
-  function makeFaceTexture(skinHex, hairHex, hasBeard = false, gender = 'm') {
-    const key = skinHex + '_' + hairHex + '_' + (hasBeard ? 1 : 0) + '_' + gender;
-    if (humanTexCache.has(key)) return humanTexCache.get(key);
+  let sharedClothBump = null;
+  function getClothBumpTex() {
+    if (sharedClothBump) return sharedClothBump;
     const c = document.createElement('canvas'); c.width = 256; c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, 256, 256);
+    for (let y = 0; y < 256; y += 3) {
+      ctx.fillStyle = y % 6 === 0 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+      ctx.fillRect(0, y, 256, 1);
+    }
+    for (let x = 0; x < 256; x += 3) {
+      ctx.fillStyle = x % 6 === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+      ctx.fillRect(x, 0, 1, 256);
+    }
+    // Natural soft drapery creases
+    for (let i = 0; i < 14; i++) {
+      const gx = 12 + i * 18;
+      const g = ctx.createLinearGradient(gx - 8, 0, gx + 8, 0);
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.5, i % 2 === 0 ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.18)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(gx - 8, 20, 16, 220);
+    }
+    sharedClothBump = new THREE.CanvasTexture(c);
+    sharedClothBump.wrapS = sharedClothBump.wrapT = THREE.RepeatWrapping;
+    return sharedClothBump;
+  }
+
+  function makeFaceTexture(skinHex, hairHex, hasBeard = false, gender = 'm') {
+    const key = 'face2_' + skinHex + '_' + hairHex + '_' + (hasBeard ? 1 : 0) + '_' + gender;
+    if (humanTexCache.has(key)) return humanTexCache.get(key);
+    const c = document.createElement('canvas'); c.width = 512; c.height = 512;
     const ctx = c.getContext('2d');
     const col = new THREE.Color(skinHex);
     const base = '#' + col.getHexString();
-    const dark = '#' + col.clone().multiplyScalar(0.80).getHexString();
+    const warm = '#' + col.clone().lerp(new THREE.Color(0xc46d54), 0.14).getHexString();
+    const shadow = '#' + col.clone().multiplyScalar(0.76).getHexString();
+    const deepShadow = '#' + col.clone().multiplyScalar(0.62).getHexString();
     const hair = '#' + new THREE.Color(hairHex).getHexString();
 
-    // Soft shaded skin base
-    const sg = ctx.createLinearGradient(0, 0, 0, 256);
-    sg.addColorStop(0, base); sg.addColorStop(0.75, base); sg.addColorStop(1, dark);
-    ctx.fillStyle = sg; ctx.fillRect(0, 0, 256, 256);
+    // Realistic skin tonal gradient (forehead slightly brighter, jaw & under-chin softly shaded)
+    const sg = ctx.createLinearGradient(0, 0, 0, 512);
+    sg.addColorStop(0.0, base); sg.addColorStop(0.58, base); sg.addColorStop(0.84, warm); sg.addColorStop(1.0, shadow);
+    ctx.fillStyle = sg; ctx.fillRect(0, 0, 512, 512);
 
-    // Natural hair wrap around top & back of head (UV u=0.5 is front face!)
-    ctx.fillStyle = hair;
-    ctx.fillRect(0, 0, 256, 76);
-    ctx.fillRect(0, 70, 74, 108);
-    ctx.fillRect(182, 70, 74, 108);
-    if (gender === 'f') {
-      ctx.fillRect(0, 70, 82, 165); ctx.fillRect(174, 70, 82, 165);
+    // Subtle organic skin micro-variation (eliminates plastic uniformity!)
+    for (let i = 0; i < 2600; i++) {
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,245,235,0.035)' : 'rgba(95,55,35,0.035)';
+      ctx.fillRect(Math.random() * 512, Math.random() * 512, 3, 3);
     }
 
-    // Subtle facial sculpting on front center (x ≈ 128)
-    // Cheek warmth
-    ctx.fillStyle = 'rgba(185, 95, 78, 0.14)';
-    ctx.beginPath(); ctx.ellipse(106, 150, 12, 8, 0, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(150, 150, 12, 8, 0, 0, Math.PI*2); ctx.fill();
-    // Eyebrows
-    ctx.strokeStyle = hair; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(100, 118); ctx.quadraticCurveTo(111, 113, 121, 118); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(135, 118); ctx.quadraticCurveTo(145, 113, 156, 118); ctx.stroke();
-    // Realistic eyes (sclera + dark iris + catchlight)
-    [111, 145].forEach(ex => {
-      ctx.fillStyle = '#f5f5f4'; ctx.beginPath(); ctx.ellipse(ex, 128, 7.5, 4.2, 0, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#2b1e16'; ctx.beginPath(); ctx.arc(ex, 128, 3.6, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(ex - 1.2, 126.8, 1.1, 0, Math.PI*2); ctx.fill();
+    // Natural hairline & back-of-head hair coverage (UV u=0.5 is front face!)
+    ctx.fillStyle = hair;
+    ctx.fillRect(0, 0, 512, 148);
+    ctx.beginPath(); ctx.ellipse(256, 152, 118, 32, 0, 0, Math.PI * 2); ctx.fillStyle = base; ctx.fill();
+    ctx.fillStyle = hair;
+    ctx.fillRect(0, 140, 148, 220);
+    ctx.fillRect(364, 140, 148, 220);
+    if (gender === 'f') {
+      ctx.fillRect(0, 140, 162, 330); ctx.fillRect(350, 140, 162, 330);
+    }
+
+    // Soft anatomical shading around eye sockets, cheekbones & temples (film realism — no cartoon outlines!)
+    [224, 288].forEach(ex => {
+      const sock = ctx.createRadialGradient(ex, 248, 4, ex, 248, 26);
+      sock.addColorStop(0, 'rgba(68, 42, 30, 0.24)');
+      sock.addColorStop(1, 'rgba(68, 42, 30, 0)');
+      ctx.fillStyle = sock; ctx.fillRect(ex - 28, 222, 56, 52);
     });
-    // Subtle nose bridge & nostril shadow
-    ctx.fillStyle = 'rgba(90, 55, 40, 0.22)';
-    ctx.beginPath(); ctx.ellipse(128, 148, 5, 3, 0, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = 'rgba(90, 55, 40, 0.18)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(128, 128); ctx.lineTo(128, 146); ctx.stroke();
-    // Natural mouth / smile
-    ctx.strokeStyle = gender === 'f' ? '#a64d4d' : '#8c5346'; ctx.lineWidth = 2.8;
-    ctx.beginPath(); ctx.moveTo(117, 166); ctx.quadraticCurveTo(128, 171, 139, 166); ctx.stroke();
-    // Optional neat Moroccan stubble/beard
+    // Subtle temple & jaw contour shadows
+    const jl = ctx.createLinearGradient(160, 0, 210, 0);
+    jl.addColorStop(0, 'rgba(72,44,30,0.22)'); jl.addColorStop(1, 'rgba(72,44,30,0)');
+    ctx.fillStyle = jl; ctx.fillRect(160, 210, 50, 220);
+    const jr = ctx.createLinearGradient(352, 0, 302, 0);
+    jr.addColorStop(0, 'rgba(72,44,30,0.22)'); jr.addColorStop(1, 'rgba(72,44,30,0)');
+    ctx.fillStyle = jr; ctx.fillRect(302, 210, 50, 220);
+
+    // Subtle natural eyebrows (soft tapered strokes, NOT thick cartoon bars)
+    ctx.strokeStyle = 'rgba(32, 24, 20, 0.58)'; ctx.lineWidth = gender === 'f' ? 3.2 : 4.6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(204, 232); ctx.quadraticCurveTo(224, 224, 242, 231); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(270, 231); ctx.quadraticCurveTo(288, 224, 308, 232); ctx.stroke();
+
+    // Realistic muted human eyes (natural warm off-white sclera, soft lash line, dark brown iris)
+    [224, 288].forEach(ex => {
+      ctx.fillStyle = '#ddd6ce'; ctx.beginPath(); ctx.ellipse(ex, 248, 10.5, 4.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#291e17'; ctx.beginPath(); ctx.arc(ex, 248, 4.6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#120d0a'; ctx.beginPath(); ctx.arc(ex, 248, 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.65)'; ctx.beginPath(); ctx.arc(ex - 1.4, 246.6, 1.1, 0, Math.PI * 2); ctx.fill();
+      // Natural upper eyelid crease
+      ctx.strokeStyle = 'rgba(35, 22, 16, 0.55)'; ctx.lineWidth = 2.0;
+      ctx.beginPath(); ctx.arc(ex, 250, 10.5, Math.PI * 1.12, Math.PI * 1.88); ctx.stroke();
+    });
+
+    // Subtle nose bridge highlight & soft under-nose shadow
+    ctx.strokeStyle = 'rgba(255,245,235,0.16)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(256, 244); ctx.lineTo(256, 286); ctx.stroke();
+    ctx.fillStyle = 'rgba(72, 42, 28, 0.24)';
+    ctx.beginPath(); ctx.ellipse(256, 294, 10, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(48, 28, 18, 0.34)';
+    ctx.beginPath(); ctx.ellipse(249, 295, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(263, 295, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Natural relaxed lips (soft shaded upper/lower lip — ZERO cartoon smiley line!)
+    ctx.fillStyle = gender === 'f' ? 'rgba(158, 76, 72, 0.62)' : 'rgba(135, 76, 66, 0.50)';
+    ctx.beginPath(); ctx.ellipse(256, 326, 17, 4.2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(165, 92, 82, 0.42)';
+    ctx.beginPath(); ctx.ellipse(256, 331, 14, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(65, 34, 28, 0.38)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(239, 328); ctx.quadraticCurveTo(256, 330, 273, 328); ctx.stroke();
+
+    // Realistic close-cropped stubble / neat beard
     if (hasBeard) {
-      ctx.fillStyle = 'rgba(30, 24, 20, 0.28)';
-      ctx.beginPath(); ctx.ellipse(128, 182, 26, 16, 0, 0, Math.PI); ctx.fill();
+      const bg = ctx.createRadialGradient(256, 354, 16, 256, 354, 72);
+      bg.addColorStop(0, 'rgba(28, 22, 18, 0.48)');
+      bg.addColorStop(0.7, 'rgba(28, 22, 18, 0.32)');
+      bg.addColorStop(1, 'rgba(28, 22, 18, 0)');
+      ctx.fillStyle = bg; ctx.fillRect(184, 302, 144, 118);
+      for (let i = 0; i < 650; i++) {
+        const bx = 204 + Math.random() * 104, by = 312 + Math.random() * 82;
+        if (Math.hypot((bx - 256) * 0.85, by - 350) < 52 && Math.hypot(bx - 256, (by - 328) * 1.9) > 16) {
+          ctx.fillStyle = 'rgba(22,18,15,0.28)'; ctx.fillRect(bx, by, 2, 2);
+        }
+      }
     }
 
     const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding;
@@ -1451,57 +1522,60 @@
   }
 
   function makeClothingTexture(baseHex, style = 'casual') {
-    const key = 'cloth_' + baseHex + '_' + style;
+    const key = 'cloth2_' + baseHex + '_' + style;
     if (humanTexCache.has(key)) return humanTexCache.get(key);
     const c = document.createElement('canvas'); c.width = 256; c.height = 256;
     const ctx = c.getContext('2d');
     const col = new THREE.Color(baseHex);
     const hex = '#' + col.getHexString();
-    const dark = '#' + col.clone().multiplyScalar(0.76).getHexString();
-    const light = '#' + col.clone().lerp(new THREE.Color(0xffffff), 0.14).getHexString();
+    const dark = '#' + col.clone().multiplyScalar(0.72).getHexString();
+    const light = '#' + col.clone().lerp(new THREE.Color(0xf4efe8), 0.12).getHexString();
 
     const g = ctx.createLinearGradient(0, 0, 0, 256);
-    g.addColorStop(0, light); g.addColorStop(0.5, hex); g.addColorStop(1, dark);
+    g.addColorStop(0, light); g.addColorStop(0.45, hex); g.addColorStop(1, dark);
     ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
 
-    // Woven fabric micro-grain + subtle vertical drapery folds
-    for (let i = 0; i < 1800; i++) {
-      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.045)';
-      ctx.fillRect(Math.random()*256, Math.random()*256, 2, 3);
+    // Fine cotton/linen/denim weave + organic diagonal garment folds
+    for (let i = 0; i < 3200; i++) {
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.045)';
+      ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
     }
-    for (let x = 24; x < 240; x += 36) {
-      ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fillRect(x, 40, 8, 200);
+    for (let x = 18; x < 244; x += 28) {
+      const fg = ctx.createLinearGradient(x - 6, 0, x + 6, 0);
+      fg.addColorStop(0, 'rgba(0,0,0,0)'); fg.addColorStop(0.5, 'rgba(0,0,0,0.08)'); fg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = fg; ctx.fillRect(x - 6, 24, 12, 224);
     }
+    // Subtle waist/hem seam shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(0, 242, 256, 14);
 
     if (style === 'afriquia') {
-      // Official Afriquia FULL-BODY ORANGE Coveralls with Bright Blue Folded Collar & Blue Pocket Trim (from Pompiste 1 & 2.jpeg!)
-      ctx.fillStyle = '#1470cc'; ctx.fillRect(0, 0, 256, 36); // Bright royal/sky blue collar!
-      ctx.fillStyle = '#0e58a6'; ctx.fillRect(124, 36, 8, 220); // Front coverall zipper placket
-      // Blue chest pocket accent & sleeve trim
-      ctx.fillStyle = '#1470cc'; ctx.fillRect(142, 66, 36, 14);
-      ctx.fillStyle = '#1470cc'; ctx.fillRect(28, 118, 22, 6);
-      // Blue Afriquia curved drop logo on the back of the orange jumpsuit (visible in Pompiste 2.jpeg!)
-      ctx.strokeStyle = '#1470cc'; ctx.lineWidth = 10;
-      ctx.beginPath(); ctx.arc(28, 100, 24, 0, Math.PI * 1.5); ctx.stroke();
+      // Authentic Afriquia FULL-BODY ORANGE Coveralls with Royal Blue Collar, Zipper & Back Drop Logo (Pompiste 1 & 2.jpeg!)
+      ctx.fillStyle = '#146cc8'; ctx.fillRect(0, 0, 256, 32);
+      ctx.fillStyle = '#0e529a'; ctx.fillRect(124, 32, 8, 224);
+      ctx.fillStyle = '#146cc8'; ctx.fillRect(142, 66, 34, 12);
+      ctx.fillStyle = '#146cc8'; ctx.fillRect(28, 118, 20, 6);
+      ctx.strokeStyle = '#146cc8'; ctx.lineWidth = 9;
+      ctx.beginPath(); ctx.arc(28, 102, 22, 0, Math.PI * 1.5); ctx.stroke();
     } else if (style === 'afriquia_pants') {
-      // Matching bright orange jumpsuit lower legs with cargo pocket & blue stitch accent!
-      ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.fillRect(16, 80, 50, 64);
-      ctx.fillStyle = '#1470cc'; ctx.fillRect(16, 80, 50, 5);
+      ctx.fillStyle = 'rgba(0,0,0,0.10)'; ctx.fillRect(18, 84, 48, 62);
+      ctx.fillStyle = '#146cc8'; ctx.fillRect(18, 84, 48, 5);
     } else if (style === 'jacket') {
-      // Open blazer / jacket over crisp shirt
-      ctx.fillStyle = '#eceae4'; ctx.fillRect(112, 16, 32, 240);
-      ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(112, 16); ctx.lineTo(112, 256); ctx.moveTo(144, 16); ctx.lineTo(144, 256); ctx.stroke();
+      // Tailored open jacket/blazer over crisp neutral cotton tee/shirt with lapel shadow
+      ctx.fillStyle = '#e7e4dc'; ctx.fillRect(108, 14, 40, 242);
+      ctx.fillStyle = 'rgba(0,0,0,0.22)'; ctx.fillRect(104, 14, 5, 242); ctx.fillRect(147, 14, 5, 242);
+      ctx.fillStyle = 'rgba(255,255,255,0.09)'; ctx.fillRect(96, 18, 8, 130); ctx.fillRect(152, 18, 8, 130);
+    } else if (style === 'shirt') {
+      // Subtle button-down front placket & pocket
+      ctx.fillStyle = 'rgba(0,0,0,0.10)'; ctx.fillRect(126, 20, 4, 236);
+      ctx.fillStyle = 'rgba(0,0,0,0.08)'; ctx.fillRect(144, 70, 26, 28);
     } else if (style === 'chef') {
-      // Double-breasted white chef coat with buttons
-      ctx.fillStyle = '#22262c';
-      for (let y = 52; y <= 180; y += 32) {
-        ctx.beginPath(); ctx.arc(112, y, 4, 0, Math.PI*2); ctx.arc(144, y, 4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#242930';
+      for (let y = 52; y <= 178; y += 30) {
+        ctx.beginPath(); ctx.arc(114, y, 3.2, 0, Math.PI * 2); ctx.arc(142, y, 3.2, 0, Math.PI * 2); ctx.fill();
       }
     } else if (style === 'minibrahim') {
-      // Black Mini Brahim staff polo with signature yellow collar & chest accent
-      ctx.fillStyle = '#eab308'; ctx.fillRect(0, 0, 256, 24);
-      ctx.fillRect(138, 62, 42, 18);
+      ctx.fillStyle = '#eab308'; ctx.fillRect(0, 0, 256, 22);
+      ctx.fillRect(138, 62, 40, 16);
     }
 
     const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding;
@@ -1509,24 +1583,36 @@
     return tex;
   }
 
-  // Reusable sculpted anatomical Lathe geometries (organic human curves, zero blocky Playmobil cylinders!)
+  // Sculpted Architectural-Grade Anatomical Lathe Geometries (True 7.8-head Human Proportions!)
   let sharedHumanGeos = null;
   function getHumanGeos() {
     if (sharedHumanGeos) return sharedHumanGeos;
-    const lathe = (pts, segs = 12) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), segs);
-    // Torso (anatomical waist -> ribcage -> broad rounded shoulders -> collar)
-    const torso = lathe([[0.01,0],[0.135,0.03],[0.125,0.18],[0.155,0.36],[0.175,0.48],[0.14,0.55],[0.065,0.58]], 14);
-    // Anatomical thigh + calf + upper arm + forearm
-    const thigh = lathe([[0.056,0],[0.062,0.16],[0.074,0.34],[0.068,0.43],[0.01,0.45]], 10);
-    const calf  = lathe([[0.038,0],[0.044,0.12],[0.056,0.28],[0.052,0.40],[0.01,0.42]], 10);
-    const uArm  = lathe([[0.038,0],[0.043,0.14],[0.050,0.26],[0.01,0.29]], 9);
-    const fArm  = lathe([[0.028,0],[0.034,0.12],[0.040,0.25],[0.01,0.27]], 9);
-    // Sculpted Head (jaw -> cheekbones -> cranium)
-    const head = new THREE.SphereGeometry(0.112, 16, 14);
-    head.scale(0.88, 1.09, 0.96);
-    head.rotateY(-Math.PI / 2); // Align face UV u=0.5 cleanly to +Z!
+    const lathe = (pts, segs = 16) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), segs);
+    // Tailored continuous torso draping over hips (NO doll pelvis seam!)
+    const torsoM = lathe([[0.01,0],[0.146,0.03],[0.144,0.14],[0.134,0.28],[0.156,0.44],[0.174,0.56],[0.148,0.63],[0.072,0.68],[0.056,0.70]], 16);
+    const torsoF = lathe([[0.01,0],[0.152,0.03],[0.148,0.14],[0.118,0.29],[0.138,0.45],[0.146,0.56],[0.122,0.63],[0.064,0.68],[0.052,0.70]], 16);
+    const longCoat = lathe([[0.01,0],[0.195,0.02],[0.172,0.22],[0.146,0.42],[0.124,0.56],[0.142,0.70],[0.148,0.80],[0.120,0.87],[0.062,0.92]], 16);
+    // Draped trouser legs (natural fabric fall, slightly tapered toward ankle!)
+    const thigh = lathe([[0.058,0],[0.068,0.14],[0.080,0.32],[0.076,0.44],[0.01,0.47]], 12);
+    const calf  = lathe([[0.044,0],[0.048,0.12],[0.059,0.28],[0.056,0.41],[0.01,0.43]], 12);
+    const uArm  = lathe([[0.041,0],[0.046,0.13],[0.054,0.26],[0.01,0.30]], 12);
+    const fArm  = lathe([[0.030,0],[0.035,0.12],[0.042,0.24],[0.01,0.27]], 12);
+    // Sculpted anatomical head (chin -> tapered jaw -> cheekbones -> full cranium — NOT a round egg!)
+    const head = lathe([[0.008,0],[0.044,0.018],[0.072,0.052],[0.088,0.105],[0.094,0.155],[0.086,0.195],[0.058,0.218],[0.006,0.224]], 18);
+    head.translate(0, -0.112, 0);
+    head.scale(0.92, 1.0, 1.04);
+    head.rotateY(-Math.PI / 2);
+    // Sculpted ergonomic shoe (rounded toe box + curved heel — NOT a rectangular brick!)
+    const shoeShape = new THREE.Shape();
+    shoeShape.moveTo(-0.044, -0.09); shoeShape.quadraticCurveTo(-0.048, 0.04, -0.036, 0.125);
+    shoeShape.quadraticCurveTo(0, 0.152, 0.036, 0.125); shoeShape.quadraticCurveTo(0.048, 0.04, 0.044, -0.09);
+    shoeShape.quadraticCurveTo(0, -0.108, -0.044, -0.09);
+    const shoe = new THREE.ExtrudeGeometry(shoeShape, { depth: 0.058, bevelEnabled: true, bevelThickness: 0.014, bevelSize: 0.008, bevelSegments: 2 });
+    shoe.rotateX(Math.PI / 2);
+    const sole = new THREE.ExtrudeGeometry(shoeShape, { depth: 0.018, bevelEnabled: false });
+    sole.rotateX(Math.PI / 2);
 
-    sharedHumanGeos = { torso, thigh, calf, uArm, fArm, head };
+    sharedHumanGeos = { torsoM, torsoF, longCoat, thigh, calf, uArm, fArm, head, shoe, sole };
     return sharedHumanGeos;
   }
 
@@ -1534,106 +1620,169 @@
     const H = opts.height || 1.80;
     const isChild = H < 1.38;
     const s = H / 1.80;
-    const headScale = isChild ? 1.18 : 1.0; // Authentic child proportions!
+    const headScale = isChild ? 1.14 : 0.96; // Natural architectural human proportions (7.8 heads!)
     const G = getHumanGeos();
+    const bump = getClothBumpTex();
 
-    const skinHex = opts.skin || 0xd6a684;
-    const hairHex = opts.hair || 0x1e1916;
+    // Varied natural Mediterranean/Moroccan skin tones
+    const defaultSkins = [0xdab290, 0xc89a78, 0xdfb999, 0xbc8c6a, 0xd4a684];
+    const skinHex = opts.skin || defaultSkins[Math.abs(Math.round((opts.shirt || 17) * 7)) % defaultSkins.length];
+    const hairHex = opts.hair || 0x1a1512;
     const faceTex = makeFaceTexture(skinHex, hairHex, opts.beard, opts.gender || 'm');
     const clothTex = makeClothingTexture(opts.shirt || 0x2c4257, opts.style || 'casual');
     const pantsTex = makeClothingTexture(opts.pants || 0x242933, opts.pantsStyle || 'casual');
 
-    const headMat = new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.58 });
-    const skinMat = new THREE.MeshStandardMaterial({ color: skinHex, roughness: 0.60 });
-    const hairMat = new THREE.MeshStandardMaterial({ color: hairHex, roughness: 0.85 });
-    const topMat  = new THREE.MeshStandardMaterial({ map: clothTex, roughness: 0.78 });
-    const botMat  = new THREE.MeshStandardMaterial({ map: pantsTex, roughness: 0.82 });
-    const shoeMat = new THREE.MeshStandardMaterial({ color: opts.shoe || 0x1b1e23, roughness: 0.65 });
-    const soleMat = new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.85 });
+    const headMat = new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.76, metalness: 0.0 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: skinHex, roughness: 0.78, metalness: 0.0 });
+    const hairMat = new THREE.MeshStandardMaterial({ color: hairHex, roughness: 0.92, metalness: 0.0 });
+    const topMat  = new THREE.MeshStandardMaterial({ map: clothTex, bumpMap: bump, bumpScale: 0.008, roughness: 0.90, metalness: 0.0 });
+    const botMat  = new THREE.MeshStandardMaterial({ map: pantsTex, bumpMap: bump, bumpScale: 0.008, roughness: 0.92, metalness: 0.0 });
+    const shoeMat = new THREE.MeshStandardMaterial({ color: opts.shoe || 0x23262c, roughness: 0.76, metalness: 0.04 });
+    const soleMat = new THREE.MeshStandardMaterial({ color: 0xd8dad6, roughness: 0.90 });
 
     const root = new THREE.Group();
     if (aoMat) {
-      const sh = new THREE.Mesh(new THREE.PlaneGeometry(0.80 * s, 0.80 * s), aoMat);
+      const sh = new THREE.Mesh(new THREE.PlaneGeometry(0.76 * s, 0.76 * s), aoMat);
       sh.rotation.x = -Math.PI / 2; sh.position.y = 0.022; root.add(sh);
     }
 
-    // Articulated Anatomical Legs (Hip -> Sculpted Thigh -> Knee -> Sculpted Calf -> Sneaker/Shoe!)
-    const legL = new THREE.Group(); legL.position.set(-0.095 * s, 0.90 * s, 0);
-    const legR = new THREE.Group(); legR.position.set(0.095 * s, 0.90 * s, 0);
+    // Articulated Draped Legs + Sculpted Ergonomic Footwear
+    const legL = new THREE.Group(); legL.position.set(-0.088 * s, 0.89 * s, 0);
+    const legR = new THREE.Group(); legR.position.set(0.088 * s, 0.89 * s, 0);
     [legL, legR].forEach(lg => {
       const th = new THREE.Mesh(G.thigh, botMat);
-      th.scale.set(s, s, s); th.position.y = -0.44 * s; th.castShadow = true; lg.add(th);
+      th.scale.set(s, s, s); th.position.y = -0.45 * s; th.castShadow = true; lg.add(th);
       const knee = new THREE.Group(); knee.position.y = -0.44 * s;
+      // Seamless knee cloth cap
+      const kCap = new THREE.Mesh(new THREE.SphereGeometry(0.056 * s, 10, 8), botMat);
+      knee.add(kCap);
       const cf = new THREE.Mesh(G.calf, botMat);
-      cf.scale.set(s, s, s); cf.position.y = -0.41 * s; knee.add(cf);
-      // Detailed shoe + white sneaker sole
-      const sh = new THREE.Mesh(new THREE.BoxGeometry(0.092 * s, 0.065 * s, 0.24 * s), shoeMat);
-      sh.position.set(0, -0.42 * s, 0.045 * s); knee.add(sh);
-      const sl = new THREE.Mesh(new THREE.BoxGeometry(0.096 * s, 0.022 * s, 0.246 * s), soleMat);
-      sl.position.set(0, -0.448 * s, 0.045 * s); knee.add(sl);
+      cf.scale.set(s, s, s); cf.position.y = -0.40 * s; knee.add(cf);
+      // Sculpted rounded sneaker/loafer + outsole
+      const sh = new THREE.Mesh(G.shoe, shoeMat);
+      sh.scale.set(s, s, s); sh.position.set(0, -0.378 * s, 0.025 * s); knee.add(sh);
+      const sl = new THREE.Mesh(G.sole, soleMat);
+      sl.scale.set(s, s, s); sl.position.set(0, -0.432 * s, 0.025 * s); knee.add(sl);
       lg.add(knee);
       lg.userData.knee = knee;
       root.add(lg);
     });
 
-    // Pelvis + Sculpted Anatomical Torso (slightly flattened front-to-back like real humans!)
-    const pelvis = new THREE.Mesh(new THREE.SphereGeometry(0.145 * s, 12, 8), botMat);
-    pelvis.scale.set(1.06, 0.72, 0.78); pelvis.position.y = 0.90 * s; root.add(pelvis);
+    // Seamless Tailored Upper Body (Tunic/Coat or Shirt/Coverall — covers hip joint cleanly!)
+    const bodyGrp = new THREE.Group();
+    const isFemale = opts.gender === 'f';
+    const torsoW = isFemale ? 0.96 : 1.08;
+    const torsoGeo = opts.longCoat ? G.longCoat : (isFemale ? G.torsoF : G.torsoM);
+    const torso = new THREE.Mesh(torsoGeo, topMat);
+    torso.scale.set(s * torsoW, s, s * 0.72);
+    torso.position.y = (opts.longCoat ? 0.57 : 0.80) * s;
+    torso.castShadow = true; bodyGrp.add(torso);
 
-    const torso = new THREE.Mesh(G.torso, topMat);
-    const torsoW = opts.gender === 'f' ? 0.96 : 1.12;
-    torso.scale.set(s * torsoW, s, s * 0.74);
-    torso.position.y = 0.92 * s; torso.castShadow = true; root.add(torso);
+    // Subtle sculpted 3D collar (royal blue for Afriquia coveralls, matching garment otherwise!)
+    const collarMat = opts.style === 'afriquia'
+      ? new THREE.MeshStandardMaterial({ color: 0x146cc8, roughness: 0.88 })
+      : (opts.style === 'minibrahim' ? new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.85 }) : topMat);
+    const collar = new THREE.Mesh(new THREE.TorusGeometry(0.062 * s, 0.017 * s, 8, 16), collarMat);
+    collar.rotation.x = Math.PI / 2; collar.position.set(0, 1.485 * s, 0.004 * s); bodyGrp.add(collar);
 
-    // Optional Hijab / Long Coat / Chef Apron
-    if (opts.apron) {
-      const ap = new THREE.Mesh(new THREE.BoxGeometry(0.30 * s, 0.56 * s, 0.025 * s), new THREE.MeshStandardMaterial({ color: 0xf4f4f2, roughness: 0.85 }));
-      ap.position.set(0, 0.98 * s, 0.125 * s); root.add(ap);
+    // Subtle leather belt for casual/business adults
+    if (!isChild && !opts.longCoat && opts.style !== 'afriquia' && opts.style !== 'chef') {
+      const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.142 * s * torsoW, 0.144 * s * torsoW, 0.034 * s, 16), new THREE.MeshStandardMaterial({ color: 0x261d17, roughness: 0.72 }));
+      belt.scale.set(1, 1, 0.72); belt.position.y = 0.875 * s; bodyGrp.add(belt);
     }
 
-    // Articulated Arms (Seamlessly integrated shoulders -> Upper Arm -> Bent Elbow -> Forearm -> Hand!)
-    const armL = new THREE.Group(); armL.position.set(-0.178 * s * torsoW, 1.41 * s, 0);
-    const armR = new THREE.Group(); armR.position.set(0.178 * s * torsoW, 1.41 * s, 0);
+    // Optional Chef Apron
+    if (opts.apron) {
+      const ap = new THREE.Mesh(new THREE.CylinderGeometry(0.155 * s, 0.175 * s, 0.62 * s, 14, 1, true, -Math.PI * 0.42, Math.PI * 0.84), new THREE.MeshStandardMaterial({ color: 0xf0f0ec, roughness: 0.90, side: THREE.DoubleSide }));
+      ap.scale.set(1, 1, 0.78); ap.position.set(0, 0.88 * s, 0.02 * s); bodyGrp.add(ap);
+    }
+
+    // Natural Everyday Accessories (Leather Tote / Backpack / Briefcase)
+    if (opts.bag === 'tote') {
+      const bagMat = new THREE.MeshStandardMaterial({ color: 0x4b3222, roughness: 0.72 });
+      const tote = new THREE.Mesh(new THREE.BoxGeometry(0.10 * s, 0.28 * s, 0.24 * s), bagMat);
+      tote.position.set(0.20 * s, 0.96 * s, -0.02 * s); bodyGrp.add(tote);
+    } else if (opts.bag === 'pack') {
+      const pkMat = new THREE.MeshStandardMaterial({ color: 0x252b34, roughness: 0.88 });
+      const pk = new THREE.Mesh(new THREE.BoxGeometry(0.26 * s, 0.34 * s, 0.13 * s), pkMat);
+      pk.position.set(0, 1.18 * s, -0.14 * s); bodyGrp.add(pk);
+    }
+
+    // Seamless Articulated Arms (Natural sloped shoulders -> elbow -> sculpted hand!)
+    const armL = new THREE.Group(); armL.position.set(-0.172 * s * torsoW, 1.405 * s, 0);
+    const armR = new THREE.Group(); armR.position.set(0.172 * s * torsoW, 1.405 * s, 0);
     [armL, armR].forEach((ar, idx) => {
-      const shCap = new THREE.Mesh(new THREE.SphereGeometry(0.056 * s, 9, 8), topMat); ar.add(shCap);
-      const ua = new THREE.Mesh(G.uArm, topMat); ua.scale.set(s, s, s); ua.position.y = -0.28 * s; ar.add(ua);
+      const shCap = new THREE.Mesh(new THREE.SphereGeometry(0.056 * s, 10, 8), topMat);
+      shCap.scale.set(0.95, 1.05, 0.88); ar.add(shCap);
+      const ua = new THREE.Mesh(G.uArm, topMat); ua.scale.set(s, s, s); ua.position.y = -0.285 * s; ar.add(ua);
       const elb = new THREE.Group(); elb.position.y = -0.28 * s;
-      elb.rotation.x = -0.18; // Natural slight human elbow bend!
+      elb.rotation.x = -0.16;
+      const eCap = new THREE.Mesh(new THREE.SphereGeometry(0.039 * s, 8, 8), opts.shortSleeve ? skinMat : topMat);
+      elb.add(eCap);
       const fa = new THREE.Mesh(G.fArm, opts.shortSleeve ? skinMat : topMat);
-      fa.scale.set(s, s, s); fa.position.y = -0.26 * s; elb.add(fa);
-      const hd = new THREE.Mesh(new THREE.SphereGeometry(0.036 * s, 8, 6), skinMat);
-      hd.scale.set(0.85, 1.15, 0.65); hd.position.y = -0.29 * s; elb.add(hd);
+      fa.scale.set(s, s, s); fa.position.y = -0.255 * s; elb.add(fa);
+      // Sculpted flattened palm + thumb silhouette
+      const hd = new THREE.Mesh(new THREE.SphereGeometry(0.034 * s, 10, 8), skinMat);
+      hd.scale.set(0.62, 1.32, 0.92); hd.position.set(0, -0.295 * s, 0.008 * s); elb.add(hd);
       ar.add(elb);
-      ar.rotation.z = idx === 0 ? 0.08 : -0.08; // Arms hang naturally off the body!
+      ar.rotation.z = idx === 0 ? 0.075 : -0.075;
       ar.userData.elbow = elb;
-      root.add(ar);
+      bodyGrp.add(ar);
     });
 
-    // Neck + Portrait-Textured Sculpted Head + Hair/Cap/Hijab (Exact 1.80m top!)
-    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.048 * s, 0.056 * s, 0.11 * s, 10), skinMat);
-    neck.position.y = 1.51 * s; root.add(neck);
-    const headGrp = new THREE.Group(); headGrp.position.y = 1.66 * s;
+    // Sculpted Neck + Anatomical Head + Subtle 3D Nose, Ears, Hair/Hijab/Cap!
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.044 * s, 0.052 * s, 0.11 * s, 12), skinMat);
+    neck.position.set(0, 1.52 * s, -0.004 * s); bodyGrp.add(neck);
+
+    const headGrp = new THREE.Group(); headGrp.position.set(0, 1.665 * s, 0.004 * s);
     const head = new THREE.Mesh(G.head, headMat);
     head.scale.set(s * headScale, s * headScale, s * headScale); head.castShadow = true; headGrp.add(head);
 
-    if (opts.cap) {
-      // Afriquia Attendant Orange/Blue Cap!
-      const capMat = new THREE.MeshStandardMaterial({ color: opts.cap, roughness: 0.72 });
-      const dome = new THREE.Mesh(new THREE.SphereGeometry(0.115 * s * headScale, 12, 8, 0, Math.PI*2, 0, Math.PI*0.52), capMat);
-      dome.position.y = 0.025 * s; headGrp.add(dome);
-      const visor = new THREE.Mesh(new THREE.CylinderGeometry(0.11 * s, 0.115 * s, 0.015 * s, 12, 1, false, -0.8, 1.6), capMat);
-      visor.position.set(0, 0.028 * s, 0.065 * s); visor.rotation.x = 0.12; headGrp.add(visor);
-    } else if (opts.hijab) {
-      const hMat = new THREE.MeshStandardMaterial({ color: opts.hijab, roughness: 0.80 });
-      const wrap = new THREE.Mesh(new THREE.SphereGeometry(0.124 * s * headScale, 12, 10, Math.PI * 0.18, Math.PI * 1.64, 0, Math.PI * 0.88), hMat);
-      wrap.rotation.y = Math.PI * 0.5; headGrp.add(wrap);
-      const drape = new THREE.Mesh(new THREE.CylinderGeometry(0.09 * s, 0.145 * s, 0.22 * s, 10), hMat);
-      drape.position.set(0, -0.14 * s, -0.01 * s); headGrp.add(drape);
-    } else {
-      const crown = new THREE.Mesh(new THREE.SphereGeometry(0.114 * s * headScale, 12, 8, 0, Math.PI*2, 0, Math.PI*0.52), hairMat);
-      crown.scale.set(0.90, 1.04, 0.98); crown.position.y = 0.015 * s; headGrp.add(crown);
+    // Subtle 3D sculpted nose bridge & ears (instant anatomical profile realism!)
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.013 * s * headScale, 0.034 * s * headScale, 6), skinMat);
+    nose.rotation.x = Math.PI * 0.34; nose.position.set(0, -0.006 * s * headScale, 0.095 * s * headScale); headGrp.add(nose);
+    if (!opts.hijab) {
+      [-0.084, 0.084].forEach(ex => {
+        const ear = new THREE.Mesh(new THREE.SphereGeometry(0.017 * s * headScale, 6, 6), skinMat);
+        ear.scale.set(0.45, 1.25, 0.72); ear.position.set(ex * s * headScale, -0.006 * s * headScale, -0.006 * s * headScale); headGrp.add(ear);
+      });
     }
-    root.add(headGrp);
+
+    // Optional Sleek Sunglasses (outdoor walkers)
+    if (opts.glasses) {
+      const glMat = new THREE.MeshStandardMaterial({ color: 0x111418, roughness: 0.14, metalness: 0.75 });
+      [-0.028, 0.028].forEach(gx => {
+        const lens = new THREE.Mesh(new THREE.BoxGeometry(0.036 * s * headScale, 0.020 * s * headScale, 0.012 * s), glMat);
+        lens.position.set(gx * s * headScale, 0.012 * s * headScale, 0.092 * s * headScale); headGrp.add(lens);
+      });
+      const br = new THREE.Mesh(new THREE.BoxGeometry(0.022 * s * headScale, 0.005 * s, 0.010 * s), glMat);
+      br.position.set(0, 0.016 * s * headScale, 0.093 * s * headScale); headGrp.add(br);
+    }
+
+    if (opts.cap) {
+      // Authentic Afriquia Blue Cap (curved visor & matte cotton crown — zero skull clipping!)
+      const capMat = new THREE.MeshStandardMaterial({ color: opts.cap, roughness: 0.84 });
+      const dome = new THREE.Mesh(new THREE.SphereGeometry(0.108 * s * headScale, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.54), capMat);
+      dome.scale.set(0.96, 1.04, 1.08); dome.position.set(0, 0.020 * s * headScale, -0.002 * s); headGrp.add(dome);
+      const visor = new THREE.Mesh(new THREE.CylinderGeometry(0.098 * s * headScale, 0.106 * s * headScale, 0.012 * s, 14, 1, false, -0.78, 1.56), capMat);
+      visor.position.set(0, 0.024 * s * headScale, 0.058 * s * headScale); visor.rotation.x = 0.14; headGrp.add(visor);
+    } else if (opts.hijab) {
+      const hMat = new THREE.MeshStandardMaterial({ color: opts.hijab, bumpMap: bump, bumpScale: 0.006, roughness: 0.90 });
+      const wrap = new THREE.Mesh(new THREE.SphereGeometry(0.118 * s * headScale, 16, 12, Math.PI * 0.19, Math.PI * 1.62, 0, Math.PI * 0.90), hMat);
+      wrap.scale.set(1.02, 1.08, 1.15); wrap.position.set(0, 0.004 * s, -0.006 * s); wrap.rotation.y = Math.PI * 0.5; headGrp.add(wrap);
+      const drape = new THREE.Mesh(new THREE.CylinderGeometry(0.088 * s, 0.154 * s, 0.25 * s, 14), hMat);
+      drape.scale.set(1.0, 1.0, 0.84); drape.position.set(0, -0.145 * s, -0.014 * s); headGrp.add(drape);
+    } else {
+      // Natural layered matte hair volume (clean clearance over skull, zero z-fighting!)
+      const crown = new THREE.Mesh(new THREE.SphereGeometry(0.108 * s * headScale, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.58), hairMat);
+      crown.scale.set(0.97, 1.06, 1.12); crown.position.set(0, 0.018 * s * headScale, -0.008 * s); headGrp.add(crown);
+      if (isFemale && !isChild) {
+        const backHair = new THREE.Mesh(new THREE.SphereGeometry(0.096 * s * headScale, 12, 10), hairMat);
+        backHair.scale.set(1.02, 1.28, 0.92); backHair.position.set(0, -0.036 * s, -0.062 * s); headGrp.add(backHair);
+      }
+    }
+    bodyGrp.add(headGrp);
+    root.add(bodyGrp);
 
     if (opts.seated) {
       legL.rotation.x = -Math.PI / 2.08; legR.rotation.x = -Math.PI / 2.08;
@@ -1642,7 +1791,7 @@
       armL.userData.elbow.rotation.x = -0.55; armR.userData.elbow.rotation.x = -0.55;
     }
 
-    return { root, legL, legR, armL, armR, headGrp };
+    return { root, bodyGrp, legL, legR, armL, armR, headGrp };
   }
 
   function populateHumansAndFamilies(g, M) {
@@ -1658,50 +1807,50 @@
       rig.root.position.set(x, y - seatDrop, z);
       rig.root.rotation.y = rotY;
       g.add(rig.root);
-      animatedPeople.push({ type: idleType, rig, phase: Math.random() * 6.28 });
+      animatedPeople.push({ type: idleType, rig, baseRotY: rotY, phase: Math.random() * 6.28 });
     }
 
     // 1. FAMILY #1 strolling along Covered Gallery (Father + Mother + Child!)
-    addWalker(-1.62, 17.0, -1.62, 44.0, Y_RDC, 0.92, { height: 1.80, shirt: 0x2e4057, style: 'jacket', pants: 0x262930, beard: true }, 0.15);
-    addWalker(-1.04, 17.2, -1.04, 44.2, Y_RDC, 0.92, { height: 1.66, gender: 'f', shirt: 0x8f5d4e, hijab: 0xd8cbb8, pants: 0x2f2d2c }, 0.15);
-    addWalker(-1.32, 17.8, -1.32, 44.8, Y_RDC, 0.92, { height: 1.12, shirt: 0xc28538, shortSleeve: true, pants: 0x2c4257 }, 0.15);
+    addWalker(-1.65, 17.0, -1.65, 44.0, Y_RDC, 0.92, { height: 1.80, shirt: 0x2c3a4a, style: 'jacket', pants: 0x262930, beard: true, glasses: true }, 0.15);
+    addWalker(-1.05, 17.2, -1.05, 44.2, Y_RDC, 0.92, { height: 1.66, gender: 'f', shirt: 0x876254, longCoat: true, hijab: 0xd9cfc0, pants: 0x2b2928, bag: 'tote' }, 0.15);
+    addWalker(-1.35, 17.8, -1.35, 44.8, Y_RDC, 0.92, { height: 1.12, shirt: 0xa67740, shortSleeve: true, pants: 0x2b3e52, bag: 'pack' }, 0.15);
 
     // 2. FAMILY #2 near Palm Courtyard & Angle 45m²!
-    addWalker(-9.5, 51.8, -1.5, 51.8, Y_RDC, 0.85, { height: 1.79, shirt: 0x455849, pants: 0x2a2b2e, beard: true }, 0.42);
-    addWalker(-9.5, 52.4, -1.5, 52.4, Y_RDC, 0.85, { height: 1.65, gender: 'f', shirt: 0x8d6356, pants: 0x22262e, hair: 0x281c14 }, 0.42);
-    addWalker(-8.7, 52.1, -0.7, 52.1, Y_RDC, 0.85, { height: 1.24, gender: 'f', shirt: 0x4b748f, pants: 0x32363e }, 0.42);
+    addWalker(-9.5, 51.8, -1.5, 51.8, Y_RDC, 0.85, { height: 1.79, shirt: 0x455348, style: 'shirt', pants: 0x2a2b2e, beard: true }, 0.42);
+    addWalker(-9.5, 52.4, -1.5, 52.4, Y_RDC, 0.85, { height: 1.65, gender: 'f', shirt: 0x866154, longCoat: true, pants: 0x22262e, hair: 0x261a12, bag: 'tote' }, 0.42);
+    addWalker(-8.7, 52.1, -0.7, 52.1, Y_RDC, 0.85, { height: 1.24, gender: 'f', shirt: 0x4d6b80, pants: 0x32363e }, 0.42);
 
     // 3. FAMILY #3 walking toward Mini Brahim & Oasis Café!
-    addWalker(-14.5, -21.0, -10.2, -19.5, Y_RDC, 0.88, { height: 1.82, shirt: 0x334155, style: 'jacket', pants: 0x3a3733 }, 0.2);
-    addWalker(-14.5, -20.3, -10.2, -18.8, Y_RDC, 0.88, { height: 1.64, gender: 'f', shirt: 0xa28364, hijab: 0x4a5568, pants: 0x25282e }, 0.2);
-    addWalker(-13.8, -20.6, -9.5, -19.1, Y_RDC, 0.88, { height: 1.05, shirt: 0xb55a4a, shortSleeve: true, pants: 0x2b3e50 }, 0.2);
+    addWalker(-14.5, -21.0, -10.2, -19.5, Y_RDC, 0.88, { height: 1.82, shirt: 0x34404e, style: 'jacket', pants: 0x3a3733, glasses: true }, 0.2);
+    addWalker(-14.5, -20.3, -10.2, -18.8, Y_RDC, 0.88, { height: 1.64, gender: 'f', shirt: 0x998068, longCoat: true, hijab: 0x475262, pants: 0x25282e }, 0.2);
+    addWalker(-13.8, -20.6, -9.5, -19.1, Y_RDC, 0.88, { height: 1.05, shirt: 0x9e584a, shortSleeve: true, pants: 0x2b3e50 }, 0.2);
 
-    // 4. Individual shoppers & professionals
-    addWalker(-1.4, 38.0, -1.4, 8.0, Y_RDC, 1.04, { height: 1.73, gender: 'f', shirt: 0x5c4b61, pants: 0x23262c }, 0.6);
-    addWalker(-10.5, 10.0, -10.5, 36.0, Y_RDC, 1.08, { height: 1.81, shirt: 0x5b6470, style: 'jacket', pants: 0x1f2630, beard: true }, 0.3);
-    addWalker(3.8, 20.0, 3.8, 46.0, Y_ETAGE, 0.95, { height: 1.77, shirt: 0x2f3e4f, style: 'jacket', pants: 0x1e242b }, 0.25);
-    addWalker(-1.3, 14.0, -1.3, 44.0, Y_ETAGE, 0.88, { height: 1.68, gender: 'f', shirt: 0x855e42, pants: 0x25282e }, 0.5);
+    // 4. Individual shoppers & professionals (staying cleanly in open aisles!)
+    addWalker(-1.4, 38.0, -1.4, 8.0, Y_RDC, 1.02, { height: 1.72, gender: 'f', shirt: 0x574a5c, pants: 0x23262c, bag: 'tote' }, 0.6);
+    addWalker(-10.5, 10.0, -10.5, 36.0, Y_RDC, 1.06, { height: 1.81, shirt: 0x545d68, style: 'jacket', pants: 0x1f2630, beard: true, bag: 'pack' }, 0.3);
+    addWalker(1.2, 18.5, 1.2, 48.0, Y_ETAGE, 0.94, { height: 1.77, shirt: 0x2e3b4a, style: 'jacket', pants: 0x1e242b }, 0.25);
+    addWalker(-1.3, 14.0, -1.3, 44.0, Y_ETAGE, 0.88, { height: 1.68, gender: 'f', shirt: 0x7d5d46, longCoat: true, pants: 0x25282e, bag: 'tote' }, 0.5);
 
     // 5. SEATED GUESTS squarely on stools at Oasis Café Outdoor Terrace & Inside Café!
-    addStatic(-11.45, 0.12, -27.2, Math.PI / 2,  { height: 1.76, shirt: 0x384d5e, style: 'jacket', seated: true, beard: true }, 'seated');
-    addStatic(-9.95,  0.12, -27.2, -Math.PI / 2, { height: 1.65, gender: 'f', shirt: 0x996552, hijab: 0xe6dfd3, seated: true }, 'seated');
-    addStatic(-11.45, 0.12, -21.0, Math.PI / 2,  { height: 1.80, shirt: 0x4b5947, seated: true }, 'seated');
-    addStatic(-9.95,  0.12, -21.0, -Math.PI / 2, { height: 1.15, shirt: 0xc29038, shortSleeve: true, seated: true }, 'seated');
-    addStatic(-5.6,   0.12, -26.8, 0,            { height: 1.72, shirt: 0x5c4a3e, seated: true }, 'seated');
-    addStatic(-5.6,   0.12, -25.6, Math.PI,      { height: 1.68, gender: 'f', shirt: 0x374c5e, seated: true }, 'seated');
+    addStatic(-11.45, 0.12, -27.2, Math.PI / 2,  { height: 1.76, shirt: 0x364857, style: 'jacket', seated: true, beard: true }, 'seated');
+    addStatic(-9.95,  0.12, -27.2, -Math.PI / 2, { height: 1.65, gender: 'f', shirt: 0x8f6250, hijab: 0xe3dcd0, seated: true }, 'seated');
+    addStatic(-11.45, 0.12, -21.0, Math.PI / 2,  { height: 1.80, shirt: 0x485444, style: 'shirt', seated: true }, 'seated');
+    addStatic(-9.95,  0.12, -21.0, -Math.PI / 2, { height: 1.15, shirt: 0xb5863a, shortSleeve: true, seated: true }, 'seated');
+    addStatic(-5.6,   0.12, -26.8, 0,            { height: 1.72, shirt: 0x594a3f, seated: true }, 'seated');
+    addStatic(-5.6,   0.12, -25.6, Math.PI,      { height: 1.68, gender: 'f', shirt: 0x374959, seated: true }, 'seated');
 
-    // 6. AFRIQUIA STATION ATTENDANTS IN FULL-BODY ORANGE COVERALLS + BLUE COLLAR + BLUE CAP! (Exact match to Pompiste 1 & 2.jpeg!)
-    addStatic(-13.8, 0.0, -45.4, 0.55,  { height: 1.78, shirt: 0xef5d16, style: 'afriquia', pants: 0xef5d16, pantsStyle: 'afriquia_pants', cap: 0x1470cc, beard: true }, 'work');
-    addStatic(-8.6,  0.0, -38.8, -0.75, { height: 1.76, shirt: 0xef5d16, style: 'afriquia', pants: 0xef5d16, pantsStyle: 'afriquia_pants', cap: 0x1470cc }, 'work');
-    addStatic(-11.6, 0.0, -48.6, 0.20,  { height: 1.79, shirt: 0xef5d16, style: 'afriquia', pants: 0xef5d16, pantsStyle: 'afriquia_pants', cap: 0x1470cc, beard: true }, 'work');
+    // 6. AFRIQUIA STATION ATTENDANTS IN FULL-BODY ORANGE COVERALLS + BLUE COLLAR + BLUE CAP!
+    addStatic(-13.8, 0.0, -45.4, 0.55,  { height: 1.78, shirt: 0xe85a16, style: 'afriquia', pants: 0xe85a16, pantsStyle: 'afriquia_pants', cap: 0x146cc8, beard: true }, 'work');
+    addStatic(-8.6,  0.0, -38.8, -0.75, { height: 1.76, shirt: 0xe85a16, style: 'afriquia', pants: 0xe85a16, pantsStyle: 'afriquia_pants', cap: 0x146cc8 }, 'work');
+    addStatic(-11.6, 0.0, -48.6, 0.20,  { height: 1.79, shirt: 0xe85a16, style: 'afriquia', pants: 0xe85a16, pantsStyle: 'afriquia_pants', cap: 0x146cc8, beard: true }, 'work');
 
     // 7. Mini Brahim Staff, Mechanic, Dark Kitchen Chefs & Office Workers!
-    addStatic(-6.1, 0.12, -16.1, Math.PI, { height: 1.74, shirt: 0x14171c, style: 'minibrahim', pants: 0x1d2026 }, 'work');
-    addStatic(-6.4, 0.12, -9.6, Math.PI / 2, { height: 1.79, shirt: 0x1e3a5f, style: 'afriquia', pants: 0x1a2639, cap: 0x1d4d9c }, 'work');
-    addStatic(3.4, Y_SSOL, 2.2, Math.PI, { height: 1.77, shirt: 0xf1f3f5, style: 'chef', pants: 0x262930, apron: true, cap: 0xf8fafc }, 'work');
-    addStatic(2.8, Y_SSOL, 11.4, 0.3,    { height: 1.72, gender: 'f', shirt: 0xf1f3f5, style: 'chef', pants: 0x262930, apron: true, cap: 0xf8fafc }, 'work');
-    addStatic(4.2, Y_ETAGE, 21.5, 0,       { height: 1.76, shirt: 0x3a4d63, style: 'jacket', seated: true }, 'seated');
-    addStatic(4.4, Y_ETAGE, 28.0, 0,       { height: 1.68, gender: 'f', shirt: 0x7d5748, seated: true }, 'seated');
+    addStatic(-6.1, 0.12, -16.1, Math.PI, { height: 1.74, shirt: 0x16191f, style: 'minibrahim', pants: 0x1f2228 }, 'work');
+    addStatic(-6.4, 0.12, -9.6, Math.PI / 2, { height: 1.79, shirt: 0x1e3857, style: 'afriquia', pants: 0x1b2638, cap: 0x1c4a94 }, 'work');
+    addStatic(3.4, Y_SSOL, 2.2, Math.PI, { height: 1.77, shirt: 0xeeeff0, style: 'chef', pants: 0x262930, apron: true, cap: 0xf4f5f6 }, 'work');
+    addStatic(2.8, Y_SSOL, 11.4, 0.3,    { height: 1.72, gender: 'f', shirt: 0xeeeff0, style: 'chef', pants: 0x262930, apron: true, cap: 0xf4f5f6 }, 'work');
+    addStatic(4.2, Y_ETAGE, 21.5, 0,       { height: 1.76, shirt: 0x38495c, style: 'jacket', seated: true }, 'seated');
+    addStatic(4.4, Y_ETAGE, 28.0, 0,       { height: 1.68, gender: 'f', shirt: 0x775648, seated: true }, 'seated');
     addStatic(2.1, Y_ETAGE, 2.8, Math.PI,  { height: 1.78, shirt: 0x2d3748, style: 'jacket', seated: true, beard: true }, 'seated');
   }
 
@@ -2087,7 +2236,7 @@
 
     // Streetlight Poles ONLY on the Parking Median (NEVER in the East Service Circulation Lane!)
     [[-22.7, 10], [-22.7, 28], [-22.7, 46]].forEach(([lx, lz]) => {
-      B.addBox(lx - 0.07, 0.22, lz - 0.07, lx + 0.07, 5.6, lz + 0.07, M.anthracite);
+      B.addBox(lx - 0.07, 0.22, lz - 0.07, lx + 0.07, 5.6, lz + 0.07, M.anthracite, { collide: 'rdc' });
       B.addBox(lx - 0.08, 5.5, lz - 0.08, lx + 1.0, 5.64, lz + 0.08, M.anthracite);
       B.addBox(lx + 0.52, 5.45, lz - 0.12, lx + 0.96, 5.51, lz + 0.12, M.ledWarm);
     });
@@ -2127,8 +2276,9 @@
     const fBack = new THREE.Mesh(new THREE.PlaneGeometry(2.16, 6.95), totemFaceMat);
     fBack.position.set(0, 3.85, -0.29); fBack.rotation.y = Math.PI; totemGrp.add(fBack);
     g.add(totemGrp);
+    colliders.push({ minX: 9.4 - 1.25, maxX: 9.4 + 1.25, minZ: -60.2 - 0.35, maxZ: -60.2 + 0.35, floor: 'rdc' });
 
-    // --- REALISTIC PARKED CARS (Natural Metallic Real-World Palette, Including NE Parking!) ---
+    // --- REALISTIC PARKED CARS (Natural Metallic Real-World Palette, Solid Collisions!) ---
     const realCarColors = [0xe8eaed, 0x262b33, 0x4b5563, 0x1e334d, 0x6b2727, 0x9ca3af, 0x3b4844, 0xc7bfb2];
     [
       // NE Parking next to the NE planted island!
@@ -2144,6 +2294,37 @@
       const car = createRealisticVehicle(realCarColors[i % realCarColors.length], i % 4 === 0, M.contactAO);
       car.grp.position.set(cx, 0, cz); car.grp.rotation.y = rot;
       g.add(car.grp);
+      // Solid collider around each parked vehicle (oriented along X when rot ≈ ±PI/2!)
+      const hx = Math.abs(Math.sin(rot)) > 0.5 ? 2.25 : 0.95;
+      const hz = Math.abs(Math.sin(rot)) > 0.5 ? 0.95 : 2.25;
+      colliders.push({ minX: cx - hx, maxX: cx + hx, minZ: cz - hz, maxZ: cz + hz, floor: 'rdc' });
+    });
+
+    // --- LIVE FORECOURT DRIVE-THROUGH TRAFFIC (Entrée P3014 -> Afriquia -> Sortie P3014!) ---
+    const stationLoopPts = [
+      new THREE.Vector3(-125, 0, -74.5),
+      new THREE.Vector3(-42, 0, -74.5),
+      new THREE.Vector3(-23.0, 0, -72.0),
+      new THREE.Vector3(-19.8, 0, -61.5),
+      new THREE.Vector3(-20.4, 0, -49.5),
+      new THREE.Vector3(-18.5, 0, -34.2),
+      new THREE.Vector3(-10.5, 0, -33.2),
+      new THREE.Vector3(-1.8, 0, -34.8),
+      new THREE.Vector3(1.4, 0, -45.5),
+      new THREE.Vector3(1.2, 0, -61.5),
+      new THREE.Vector3(6.8, 0, -72.2),
+      new THREE.Vector3(24.0, 0, -74.5),
+      new THREE.Vector3(125, 0, -74.5)
+    ];
+    const stationCurve = new THREE.CatmullRomCurve3(stationLoopPts, false, 'centripetal', 0.45);
+    const stationLen = stationCurve.getLength();
+    [
+      { col: 0xd9dde2, isSUV: true,  t: 0.24, speed: 6.2 },
+      { col: 0x263952, isSUV: false, t: 0.72, speed: 6.6 }
+    ].forEach(cfg => {
+      const car = createRealisticVehicle(cfg.col, cfg.isSUV, M.contactAO);
+      g.add(car.grp);
+      animatedCars.push({ type: 'curve', car, curve: stationCurve, len: stationLen, t: cfg.t, baseSpeed: cfg.speed, curSpeed: cfg.speed, wheelR: cfg.isSUV ? 0.39 : 0.33, roadMode: 'all', politeBrake: true });
     });
 
     // High-level Aerial Labels
@@ -2191,8 +2372,19 @@
     B.addBox(-18.2, 0, -95.2, 24.2, 2.2, -94.8, M.fence);
     B.flush();
 
-    const pCar1 = createRealisticVehicle(0xdce0e5, false, M.contactAO); pCar1.grp.position.set(-48, 0, -74.5); pCar1.grp.rotation.y = Math.PI / 2; g.add(pCar1.grp);
-    const pCar2 = createRealisticVehicle(0x283548, true, M.contactAO); pCar2.grp.position.set(24, 0, -81.5); pCar2.grp.rotation.y = -Math.PI / 2; g.add(pCar2.grp);
+    // Live Moving Traffic on Route P3014 (Actuel 30 m: Eastbound Z=-74.5 & Westbound Z=-81.5!)
+    [
+      { x: -130, z: -74.5, dir: 1,  speed: 11.5, col: 0xdce0e5, isSUV: false },
+      { x: 25,   z: -74.5, dir: 1,  speed: 10.2, col: 0x4b5563, isSUV: true  },
+      { x: 110,  z: -81.5, dir: -1, speed: 12.0, col: 0x283548, isSUV: true  },
+      { x: -45,  z: -81.5, dir: -1, speed: 10.8, col: 0x7a2c2c, isSUV: false }
+    ].forEach(c => {
+      const car = createRealisticVehicle(c.col, c.isSUV, M.contactAO);
+      car.grp.position.set(c.x, 0, c.z);
+      car.grp.rotation.y = c.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+      g.add(car.grp);
+      animatedCars.push({ type: 'linear', axis: 'X', min: -195, max: 195, pos: c.x, fixed: c.z, dir: c.dir, speed: c.speed, car, wheelR: c.isSUV ? 0.39 : 0.33, roadMode: 'actuel' });
+    });
 
     const sMat = makeRoadSign('ROUTE P3014 (30 m)', '← Moulay Thami   ·   Casablanca →', '#16356b');
     const sign = new THREE.Mesh(new THREE.BoxGeometry(5.6, 1.75, 0.14), [M.anthracite, M.anthracite, M.anthracite, M.anthracite, sMat, sMat]);
@@ -2280,12 +2472,27 @@
     [-100, -76, -16, 10, 36, 62].forEach(px => addCinematicPalm(g, px, -93.0, 6.6, 0.98, M));
     [-32, 0, 32, 64].forEach(pz => addCinematicPalm(g, -47.0, pz, 5.8, 0.90, M));
 
+    // Live Moving Traffic on Future P3014 (60 m) & Nouvelle Route OA65 (30 m)!
     [
-      [-15, -74.5, Math.PI/2, 0xe8eaed, true], [30, -82.0, Math.PI/2, 0x333c48, false],
-      [-80, -104.5, -Math.PI/2, 0x243b55, false], [18, -112.0, -Math.PI/2, 0x6e2b2b, true],
-      [-40.2, 18.0, Math.PI, 0x374c47, true], [-53.8, -14.0, 0, 0xd8dce0, false], [-53.8, 42.0, 0, 0x4b5563, false]
-    ].forEach(([cx, cz, rot, col, isS]) => {
-      const car = createRealisticVehicle(col, isS, M.contactAO); car.grp.position.set(cx, 0, cz); car.grp.rotation.y = rot; g.add(car.grp);
+      { axis: 'X', pos: -120, fixed: -74.5,  dir: 1,  speed: 12.2, min: -210, max: 210, col: 0xe8eaed, isSUV: true  },
+      { axis: 'X', pos: 30,   fixed: -82.0,  dir: 1,  speed: 13.8, min: -210, max: 210, col: 0x333c48, isSUV: false },
+      { axis: 'X', pos: -80,  fixed: -104.5, dir: -1, speed: 12.8, min: -210, max: 210, col: 0x243b55, isSUV: false },
+      { axis: 'X', pos: 95,   fixed: -112.0, dir: -1, speed: 11.4, min: -210, max: 210, col: 0x6e2b2b, isSUV: true  },
+      { axis: 'Z', pos: 18,   fixed: -40.2,  dir: -1, speed: 10.5, min: -210, max: 210, col: 0x374c47, isSUV: true  },
+      { axis: 'Z', pos: -135, fixed: -40.2,  dir: -1, speed: 11.2, min: -210, max: 210, col: 0xc8c0b4, isSUV: false },
+      { axis: 'Z', pos: -14,  fixed: -53.8,  dir: 1,  speed: 10.8, min: -210, max: 210, col: 0xd8dce0, isSUV: false },
+      { axis: 'Z', pos: 105,  fixed: -53.8,  dir: 1,  speed: 11.6, min: -210, max: 210, col: 0x4b5563, isSUV: true  }
+    ].forEach(c => {
+      const car = createRealisticVehicle(c.col, c.isSUV, M.contactAO);
+      if (c.axis === 'X') {
+        car.grp.position.set(c.pos, 0, c.fixed);
+        car.grp.rotation.y = c.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+      } else {
+        car.grp.position.set(c.fixed, 0, c.pos);
+        car.grp.rotation.y = c.dir > 0 ? 0 : Math.PI;
+      }
+      g.add(car.grp);
+      animatedCars.push({ type: 'linear', axis: c.axis, min: c.min, max: c.max, pos: c.pos, fixed: c.fixed, dir: c.dir, speed: c.speed, car, wheelR: c.isSUV ? 0.39 : 0.33, roadMode: 'futur' });
     });
 
     const p60Mat = makeRoadSign('P3014 ÉLARGIE (60 m)', '← Moulay Thami · 2×3 Voies · Casablanca →', '#0d5942');
@@ -2413,13 +2620,13 @@
     // --- B. STATION BUILDING: ALUCOBOND AFRIQUIA SERVICE BAY + MINI BRAHIM + OASIS CAFÉ ---
     const sx1 = -8.2, sx2 = 4.8, sz1 = -28.0, sz2 = -6.5, sH = 3.85;
     B.addBox(-12.4, 0, -29.6, sx1, 0.12, -13.0, M.pavers, { uvScale: 0.4 });
-    B.addBox(-12.4, 0, -29.6, sx2 + 1.2, 0.12, sz1, M.pavers, { uvScale: 0.4 });
+    B.addBox(sx1, 0, -29.6, sx2 + 1.2, 0.12, sz1, M.pavers, { uvScale: 0.4 });
     B.addBox(sx2, 0, sz1, sx2 + 1.2, 0.12, sz2 + 1.0, M.pavers, { uvScale: 0.4 });
 
     B.addBox(sx1, 0, sz1, sx2, 0.12, sz2, M.terrazzo, { uvScale: 0.35 });
-    // Sleek Brushed Silver Alucobond wraparound roofline & terrace overhang (inspired by slide_interne.jpg!)
+    // Sleek Brushed Silver Alucobond wraparound roofline & terrace overhang (zero z-fighting!)
     B.addBox(sx1 - 1.8, sH, sz1 - 1.2, sx2 + 0.35, sH + 0.32, sz2 + 0.35, M.alucobond, { cast: true });
-    B.addBox(sx1 - 1.75, sH - 0.04, sz1 - 1.15, sx1, sH, -12.6, M.woodSlat, { uvScale: 0.4 });
+    B.addBox(sx1 - 1.75, sH - 0.06, sz1 - 1.15, sx1 - 0.04, sH - 0.015, -12.6, M.woodSlat, { uvScale: 0.4 });
 
     // Parapet Frame: Brushed Warm-Grey Oasis Café Express fascia (Z=-29.2..-22.0) + Black/Yellow Mini Brahim (Z=-22.0..-12.6) + Alucobond Service Bay!
     B.addBox(sx1 - 1.82, sH + 0.25, sz1 - 1.22, sx2 + 0.38, sH + 1.12, sz1 - 0.98, M.alucobond, { cast: true });
@@ -2439,7 +2646,7 @@
     // Lush tropical planter boxes along Oasis Café terrace edge (matching the greenery in Oasis Café.jpeg!)
     B.addBox(-12.5, 0.12, -29.6, -12.0, 0.72, -22.4, M.anthracite, { collide: 'rdc' });
     B.addBox(-12.45, 0.68, -29.5, -12.05, 0.76, -22.5, M.grass);
-    [-28.8, -22.2, -15.4].forEach(pz => B.addBox(sx1 - 1.68, 0.12, pz - 0.1, sx1 - 1.52, sH, pz + 0.1, M.anthracite, { cast: true }));
+    [-28.8, -22.2, -15.4].forEach(pz => B.addBox(sx1 - 1.68, 0.12, pz - 0.1, sx1 - 1.52, sH, pz + 0.1, M.anthracite, { collide: 'rdc', cast: true }));
 
     addStorefrontBatched(B, 'Z', sx1, -28.0, -22.2, 0.12, sH, M.anthracite, M.glass, 1.8, 'rdc');
     addStorefrontBatched(B, 'Z', sx1, -22.2, -15.4, 0.12, sH, M.anthracite, M.glass, 2.2, 'rdc');
@@ -2468,37 +2675,37 @@
     B.addBox(1.6, 0.13, -19.1, 4.7, 0.16, -14.3, M.carpet, { uvScale: 0.45 });
     addWallDoor(B, 'Z', -0.8, -12.6, -6.5, 0.12, sH, 0.16, M.wallInt, -11.4, -10.3, 2.2, 'rdc', false);
 
-    // Exterior Terrace Tables (with subtle coffee cups!)
+    // Exterior Terrace Tables & Stools (Solid non-pass-through furniture!)
     for (let i = 0; i < 5; i++) {
       const tz = -27.2 + i * 3.1, tx = -10.7;
       B.addBox(tx - 0.04, 0.12, tz - 0.04, tx + 0.04, 0.84, tz + 0.04, M.anthracite);
-      B.addBox(tx - 0.45, 0.82, tz - 0.45, tx + 0.45, 0.88, tz + 0.45, M.woodLight);
+      B.addBox(tx - 0.45, 0.82, tz - 0.45, tx + 0.45, 0.88, tz + 0.45, M.woodLight, { collide: 'rdc' });
       B.addBox(tx - 0.15, 0.88, tz - 0.06, tx - 0.07, 0.96, tz + 0.02, M.afriquiaWhite); // Coffee cup
-      [-0.72, 0.72].forEach(dx => B.addBox(tx + dx - 0.20, 0.12, tz - 0.20, tx + dx + 0.20, 0.54, tz + 0.20, M.mbBlack));
+      [-0.72, 0.72].forEach(dx => B.addBox(tx + dx - 0.20, 0.12, tz - 0.20, tx + dx + 0.20, 0.54, tz + 0.20, M.mbBlack, { collide: 'rdc' }));
     }
-    B.addBox(-3.3, 0.12, -27.2, -1.9, 1.08, -23.0, M.woodWarm);
+    B.addBox(-3.3, 0.12, -27.2, -1.9, 1.08, -23.0, M.woodWarm, { collide: 'rdc' });
     B.addBox(-3.35, 1.08, -27.25, -1.85, 1.15, -22.95, M.mbBlack);
     B.addBox(-2.7, 1.15, -26.2, -2.1, 1.62, -25.1, M.inox);
     [-26.2, -24.0].forEach(tz => {
-      B.addBox(-6.4, 0.12, tz - 0.42, -4.8, 0.84, tz + 0.42, M.woodLight);
-      B.addBox(-6.5, 0.12, tz - 0.95, -4.7, 0.94, tz - 0.56, M.woodWarm);
-      B.addBox(-6.5, 0.12, tz + 0.56, -4.7, 0.94, tz + 0.95, M.woodWarm);
+      B.addBox(-6.4, 0.12, tz - 0.42, -4.8, 0.84, tz + 0.42, M.woodLight, { collide: 'rdc' });
+      B.addBox(-6.5, 0.12, tz - 0.95, -4.7, 0.94, tz - 0.56, M.woodWarm, { collide: 'rdc' });
+      B.addBox(-6.5, 0.12, tz + 0.56, -4.7, 0.94, tz + 0.95, M.woodWarm, { collide: 'rdc' });
     });
     [-6.2, -4.4].forEach(gx => {
-      B.addBox(gx - 0.34, 0.12, -20.7, gx + 0.34, 1.62, -17.3, M.mbBlack);
+      B.addBox(gx - 0.34, 0.12, -20.7, gx + 0.34, 1.62, -17.3, M.mbBlack, { collide: 'rdc' });
       B.addBox(gx - 0.36, 1.54, -20.72, gx + 0.36, 1.66, -17.28, M.mbYellow);
       [0.45, 0.85, 1.24].forEach((sy, sIdx) => B.addBox(gx - 0.39, sy, -20.5, gx + 0.39, sy + 0.24, -17.5, sIdx === 0 ? M.mbYellow : (sIdx === 1 ? M.afriquiaOrange : M.afriquiaBlue)));
     });
-    B.addBox(-7.4, 0.12, -16.8, -4.8, 1.02, -15.9, M.mbBlack);
+    B.addBox(-7.4, 0.12, -16.8, -4.8, 1.02, -15.9, M.mbBlack, { collide: 'rdc' });
     B.addBox(-7.42, 0.86, -16.82, -4.78, 1.00, -15.88, M.mbYellow);
-    B.addBox(-2.5, 0.12, -21.2, -1.8, 2.25, -16.6, M.inox);
-    B.addBox(-1.2, 0.12, -27.4, 4.4, 1.02, -26.4, M.inox);
-    B.addBox(1.0, 0.12, -24.8, 3.6, 1.02, -23.6, M.inox);
+    B.addBox(-2.5, 0.12, -21.2, -1.8, 2.25, -16.6, M.inox, { collide: 'rdc' });
+    B.addBox(-1.2, 0.12, -27.4, 4.4, 1.02, -26.4, M.inox, { collide: 'rdc' });
+    B.addBox(1.0, 0.12, -24.8, 3.6, 1.02, -23.6, M.inox, { collide: 'rdc' });
     B.addBox(0.8, 2.4, -25.0, 3.8, 3.1, -23.4, M.inox);
-    B.addBox(-7.4, 0.12, -14.2, -5.8, 0.86, -13.3, M.woodWarm);
-    B.addBox(-5.9, 0.12, -11.4, -5.6, 2.8, -11.1, M.afriquiaBlue);
-    B.addBox(-5.9, 0.12, -8.1, -5.6, 2.8, -7.8, M.afriquiaBlue);
-    B.addBox(-6.8, 0.55, -10.8, -3.0, 0.68, -8.4, M.steel);
+    B.addBox(-7.4, 0.12, -14.2, -5.8, 0.86, -13.3, M.woodWarm, { collide: 'rdc' });
+    B.addBox(-5.9, 0.12, -11.4, -5.6, 2.8, -11.1, M.afriquiaBlue, { collide: 'rdc' });
+    B.addBox(-5.9, 0.12, -8.1, -5.6, 2.8, -7.8, M.afriquiaBlue, { collide: 'rdc' });
+    B.addBox(-6.8, 0.55, -10.8, -3.0, 0.68, -8.4, M.steel, { collide: 'rdc' });
     [[-5.0, -25.0], [-5.0, -18.5], [-4.8, -9.5], [3.0, -16.5]].forEach(([lx, lz]) => B.addBox(lx - 1.2, sH - 0.04, lz - 0.16, lx + 1.2, sH, lz + 0.16, M.ledWarm));
     B.flush();
 
@@ -2537,6 +2744,10 @@
     const c1 = createRealisticVehicle(0x223855, true, M.contactAO); c1.grp.position.set(-11.8, 0, -43.5); c1.grp.rotation.y = Math.PI / 2; g.add(c1.grp);
     const c2 = createRealisticVehicle(0xe9ecee, false, M.contactAO); c2.grp.position.set(-11.2, 0, -37.2); c2.grp.rotation.y = Math.PI / 2; g.add(c2.grp);
     const c3 = createRealisticVehicle(0x7c2d2d, false, M.contactAO); c3.grp.position.set(-4.9, 0.68, -9.6); c3.grp.rotation.y = Math.PI / 2; g.add(c3.grp);
+    colliders.push(
+      { minX: -14.1, maxX: -9.5, minZ: -44.5, maxZ: -42.5, floor: 'rdc' },
+      { minX: -13.4, maxX: -9.0, minZ: -38.1, maxZ: -36.3, floor: 'rdc' }
+    );
 
     registerLabel('Oasis Café', '36,9 m²', -5.0, 2.6, -25.0, 'rdc', 26);
     registerLabel('Mini Brahim', '40,5 m²', -5.0, 2.6, -18.8, 'rdc', 26);
@@ -2565,13 +2776,13 @@
     B.addBox(MALL_LWING_X - 0.22, y0, 53.4, MALL_FRONT_X, y1, 53.6, M.wallBasement, { collide: 'ssol' });
 
     addWallDoor(B, 'X', SHOP_START_Z, MALL_FRONT_X, MALL_BACK_X, y0, y1, 0.20, M.wallGreen, 1.4, 3.0, 2.35, 'ssol', false);
-    B.addBox(0.4, y0, 0.6, 7.6, y0 + 0.96, 1.5, M.inox);
+    B.addBox(0.4, y0, 0.6, 7.6, y0 + 0.96, 1.5, M.inox, { collide: 'ssol' });
     B.addBox(0.5, y0 + 2.15, 0.4, 7.5, y0 + 2.85, 1.6, M.inox);
-    B.addBox(1.4, y0, 3.2, 5.6, y0 + 0.94, 4.4, M.inox);
-    B.addBox(1.4, y0, 12.2, 5.8, y0 + 0.94, 13.4, M.inox);
+    B.addBox(1.4, y0, 3.2, 5.6, y0 + 0.94, 4.4, M.inox, { collide: 'ssol' });
+    B.addBox(1.4, y0, 12.2, 5.8, y0 + 0.94, 13.4, M.inox, { collide: 'ssol' });
     B.addBox(0.1, y0, 13.8, 2.4, y1 - 0.2, 16.2, M.inox, { collide: 'ssol' });
-    B.addBox(7.3, y0, 2.4, 8.1, y0 + 2.1, 6.2, M.steel);
-    B.addBox(7.3, y0, 12.0, 8.1, y0 + 2.1, 15.8, M.steel);
+    B.addBox(7.3, y0, 2.4, 8.1, y0 + 2.1, 6.2, M.steel, { collide: 'ssol' });
+    B.addBox(7.3, y0, 12.0, 8.1, y0 + 2.1, 15.8, M.steel, { collide: 'ssol' });
     [3.8, 8.5, 13.0].forEach(lz => B.addBox(1.0, y1 - 0.04, lz - 0.16, 6.8, y1, lz + 0.16, M.ledWhite));
 
     // Stair 2: Dark Kitchen U-Staircase — FIXED to reach 100% flush to Sous-sol floor (Y = -3.40m)!
@@ -2605,7 +2816,7 @@
       if (i < SHOP_COUNT - 1) addWallDoor(B, 'X', z2, MALL_FRONT_X, MALL_BACK_X, y0, y1, 0.18, M.wallBasement, 1.2, 2.6, 2.3, 'ssol', false);
       B.addBox(1.4, y1 - 0.04, zm - 0.14, 6.2, y1, zm + 0.14, M.ledWhite);
       addSpiralStairBatched(B, MALL_BACK_X - 1.25, z2 - 1.15, Y_SSOL, Y_RDC, M.steel, M.woodWarm, `Boutique ${i + 1} (31 m²)`, Math.PI);
-      if (i % 2 === 0) B.addBox(0.2, y0, z1 + 0.5, 0.8, y0 + 1.9, z2 - 0.5, M.steel);
+      if (i % 2 === 0) B.addBox(0.2, y0, z1 + 0.5, 0.8, y0 + 1.9, z2 - 0.5, M.steel, { collide: 'ssol' });
       registerLabel(`Sous-sol #${i + 1}`, '31 m²', 3.5, y0 + 2.2, zm, 'ssol', 20);
     }
 
@@ -2649,21 +2860,22 @@
     B.addBox(-9.7, -0.24, MALL_END_Z - 2.1, -7.5, y0, MALL_END_Z, M.terrazzo, { uvScale: 0.35 });
 
     B.addBox(-2.8, -0.14, -0.4, 0.0, 0.02, 53.6, M.pavers, { uvScale: 0.45 });
-    B.addBox(MALL_LWING_X - 0.2, -0.14, 50.8, 0.0, 0.02, 53.6, M.pavers, { uvScale: 0.45 });
+    B.addBox(MALL_LWING_X - 0.2, -0.14, 50.8, -2.8, 0.02, 53.6, M.pavers, { uvScale: 0.45 });
     B.addBox(-8.2, 0.0, 44.5, -2.8, 0.34, 50.8, M.curb, { collide: 'rdc' });
     B.addBox(-8.0, 0.32, 44.7, -3.0, 0.38, 50.6, M.grass, { uvScale: 0.35 });
 
-    for (let z = 0.2; z <= 51.2; z += 5.1) B.addBox(-2.55, 0, z - 0.18, -2.20, Y_ETAGE, z + 0.18, M.wallExt, { collide: 'rdc', cast: true });
-    for (let x = -11.9; x <= -3.5; x += 4.2) B.addBox(x - 0.18, 0, 51.0, x + 0.18, Y_ETAGE, 51.35, M.wallExt, { collide: 'rdc', cast: true });
-    B.addBox(-2.75, y1, -0.2, 0.0, y1 + 0.14, 53.6, M.woodSlat, { uvScale: 0.38 });
-    B.addBox(MALL_LWING_X, y1, 50.85, 0.0, y1 + 0.14, 53.6, M.woodSlat, { uvScale: 0.38 });
+    for (let z = 0.2; z <= 51.2; z += 5.1) B.addBox(-2.55, 0, z - 0.18, -2.20, Y_ETAGE - 0.26, z + 0.18, M.wallExt, { collide: 'rdc', cast: true });
+    for (let x = -11.9; x <= -3.5; x += 4.2) B.addBox(x - 0.18, 0, 51.0, x + 0.18, Y_ETAGE - 0.26, 51.35, M.wallExt, { collide: 'rdc', cast: true });
+    // Dropped wooden slat soffit cleanly separated below 1er Étage slab (Y=3.83..3.885 vs slab bottom Y=3.90 -> ZERO z-fighting!)
+    B.addBox(-2.72, y1 - 0.07, -0.15, -0.04, y1 - 0.015, 53.56, M.woodSlat, { uvScale: 0.38 });
+    B.addBox(MALL_LWING_X, y1 - 0.07, 50.85, -2.72, y1 - 0.015, 53.56, M.woodSlat, { uvScale: 0.38 });
 
     // North Block: 32m² + Stair 1 Accès Étage + Stair 2 Dark Kitchen + 15m² + Vestiaires
     B.addBox(MALL_FRONT_X, y0, -0.12, MALL_BACK_X, y1, 0.12, M.wallExt, { collide: 'rdc', cast: true });
     addStorefrontBatched(B, 'Z', MALL_FRONT_X, 0.1, 4.58, y0, y1, M.anthracite, M.glass, 1.6, 'rdc');
     B.addBox(MALL_FRONT_X, y0, 4.58, MALL_BACK_X, y1, 4.74, M.wallInt, { collide: 'rdc' });
     B.addBox(MALL_BACK_X - 0.1, y0, 0.0, MALL_BACK_X + 0.1, y1, 4.75, M.wallExt, { collide: 'rdc', cast: true });
-    B.addBox(2.2, y0, 1.6, 5.4, y0 + 0.92, 2.6, M.woodWarm);
+    B.addBox(2.2, y0, 1.6, 5.4, y0 + 0.92, 2.6, M.woodWarm, { collide: 'rdc' });
     registerLabel('Local Commercial', '32 m²', 4.0, y0 + 2.4, 2.3, 'rdc', 26);
 
     addStorefrontBatched(B, 'Z', MALL_FRONT_X, 4.74, 12.1, y0, y1, M.anthracite, M.glass, 2.4, 'rdc');
@@ -2699,8 +2911,8 @@
     B.addBox(3.72, y0, 12.2, 3.88, y1, 16.5, M.wallInt, { collide: 'rdc' });
     addWallDoor(B, 'Z', MALL_BACK_X, 12.2, 16.5, y0, y1, 0.2, M.wallExt, 13.6, 14.8, 2.2, 'rdc');
     B.addBox(MALL_FRONT_X, y0, 16.42, MALL_BACK_X, y1, 16.58, M.wallInt, { collide: 'rdc' });
-    B.addBox(4.3, y0, 12.6, 4.9, y0 + 2.0, 15.8, M.steel);
-    B.addBox(6.2, y0, 12.6, 6.8, y0 + 2.0, 15.8, M.steel);
+    B.addBox(4.3, y0, 12.6, 4.9, y0 + 2.0, 15.8, M.steel, { collide: 'rdc' });
+    B.addBox(6.2, y0, 12.6, 6.8, y0 + 2.0, 15.8, M.steel, { collide: 'rdc' });
     registerLabel('Boutique', '15 m²', 1.9, 2.3, 14.3, 'rdc', 22);
     registerLabel('Vestiaires Cuisine', 'H / F', 6.0, 2.3, 14.3, 'rdc', 20);
 
@@ -2709,8 +2921,8 @@
       addStorefrontBatched(B, 'Z', MALL_FRONT_X, z1 + 0.08, z2 - 0.08, y0, y1, M.anthracite, M.glass, 1.7, 'rdc');
       addWallDoor(B, 'Z', MALL_BACK_X, z1, z2, y0, y1, 0.2, M.wallExt, z1 + 0.5, z1 + 1.5, 2.25, 'rdc');
       B.addBox(MALL_FRONT_X, y0, z2 - 0.09, MALL_BACK_X, y1, z2 + 0.09, M.wallInt, { collide: 'rdc' });
-      B.addBox(2.4, y0, z1 + 0.28, 5.2, y0 + 0.94, z1 + 0.86, i % 2 === 0 ? M.woodWarm : M.anthracite);
-      B.addBox(1.6, y0, z2 - 0.52, 5.0, y0 + 2.18, z2 - 0.20, M.woodLight);
+      B.addBox(2.4, y0, z1 + 0.28, 5.2, y0 + 0.94, z1 + 0.86, i % 2 === 0 ? M.woodWarm : M.anthracite, { collide: 'rdc' });
+      B.addBox(1.6, y0, z2 - 0.52, 5.0, y0 + 2.18, z2 - 0.20, M.woodLight, { collide: 'rdc' });
       B.addBox(1.2, y1 - 0.05, zm - 0.14, 6.2, y1, zm + 0.14, M.ledWarm);
       registerLabel(`Boutique ${i + 1}`, '31 m²', 3.4, 2.4, zm, 'rdc', 22);
     }
@@ -2723,14 +2935,14 @@
     // Corner safety collider
     colliders.push({ minX: MALL_BACK_X - 0.6, maxX: MALL_BACK_X + 0.2, minZ: MALL_END_Z - 0.6, maxZ: MALL_END_Z + 0.2, floor: 'rdc' });
 
-    B.addBox(4.3, y0, 56.8, 6.0, y0 + 2.2, 57.0, M.wallWarm);
-    B.addBox(6.6, y0, 54.5, 7.4, y0 + 0.88, 57.2, M.inox);
+    B.addBox(4.3, y0, 56.8, 6.0, y0 + 2.2, 57.0, M.wallWarm, { collide: 'rdc' });
+    B.addBox(6.6, y0, 54.5, 7.4, y0 + 0.88, 57.2, M.inox, { collide: 'rdc' });
     registerLabel('WC Employés', 'H / F', 6.2, 2.3, 56.8, 'rdc', 20);
 
     addStorefrontBatched(B, 'X', 53.6, -3.4, 0.0, y0, y1, M.anthracite, M.glass, 1.8, 'rdc');
     addWallDoor(B, 'X', MALL_END_Z, -3.5, 4.2, y0, y1, 0.2, M.wallExt, 0.6, 1.8, 2.25, 'rdc');
     B.addBox(-3.58, y0, 53.6, -3.42, y1, MALL_END_Z, M.wallInt, { collide: 'rdc' });
-    B.addBox(0.8, y0, 55.6, 3.2, y0 + 0.96, 56.6, M.woodWarm);
+    B.addBox(0.8, y0, 55.6, 3.2, y0 + 0.96, 56.6, M.woodWarm, { collide: 'rdc' });
     registerLabel('Boutique Angle', '45 m²', 0.4, 2.4, 57.0, 'rdc', 26);
 
     addStorefrontBatched(B, 'X', 53.6, -7.7, -3.6, y0, y1, M.anthracite, M.glass, 1.6, 'rdc');
@@ -2804,16 +3016,16 @@
     B.addBox(MALL_BACK_X - 0.1, y0, 0.0, MALL_BACK_X + 0.1, y1, 4.65, M.wallExt, { collide: 'etage', cast: true });
     addStorefrontBatched(B, 'X', 4.65, -2.5, 4.25, y0, y1, M.anthracite, M.glass, 1.7, 'etage');
     B.addBox(4.25, y0, 4.58, MALL_BACK_X, y1, 4.74, M.wallInt, { collide: 'etage' });
-    B.addBox(0.5, y0, 1.4, 3.6, y0 + 0.78, 2.5, M.woodWarm);
-    B.addBox(5.2, y0, 1.5, 7.2, y0 + 0.78, 2.5, M.woodLight);
+    B.addBox(0.5, y0, 1.4, 3.6, y0 + 0.78, 2.5, M.woodWarm, { collide: 'etage' });
+    B.addBox(5.2, y0, 1.5, 7.2, y0 + 0.78, 2.5, M.woodLight, { collide: 'etage' });
     registerLabel('Admin. Ctre Comm.', '32 m²', 2.8, y0 + 2.3, 2.3, 'etage', 26);
 
     B.addBox(MALL_BACK_X - 0.1, y0, 4.65, MALL_BACK_X + 0.1, y1, 16.5, M.wallExt, { collide: 'etage', cast: true });
     addWallDoor(B, 'Z', 3.4, 8.0, 16.5, y0, y1, 0.16, M.wallInt, 8.8, 10.0, 2.25, 'etage', false);
     B.addBox(3.4, y0, 7.92, MALL_BACK_X, y1, 8.08, M.wallInt, { collide: 'etage' });
     B.addBox(3.4, y0, 16.4, MALL_BACK_X, y1, 16.6, M.wallInt, { collide: 'etage' });
-    [9.8, 11.4, 13.0].forEach(wz => B.addBox(6.4, y0, wz, 8.2, y0 + 2.1, wz + 0.1, M.wallWarm));
-    B.addBox(4.4, y0, 9.6, 5.2, y0 + 0.88, 13.4, M.inox);
+    [9.8, 11.4, 13.0].forEach(wz => B.addBox(6.4, y0, wz, 8.2, y0 + 2.1, wz + 0.1, M.wallWarm, { collide: 'etage' }));
+    B.addBox(4.4, y0, 9.6, 5.2, y0 + 0.88, 13.4, M.inox, { collide: 'etage' });
     registerLabel('Sanitaires Étage', 'WC F / H', 5.8, y0 + 2.2, 11.6, 'etage', 22);
 
     addStorefrontBatched(B, 'X', 16.5, 0.0, 3.2, y0, y1, M.anthracite, M.glass, 1.9, 'etage');
@@ -2848,10 +3060,10 @@
 
     B.addBox(MALL_LWING_X - 0.1, y0, 53.6, MALL_LWING_X + 0.1, y1, MALL_END_Z, M.wallExt, { collide: 'etage', cast: true });
     [22.5, 29.0, 35.5].forEach(dz => {
-      B.addBox(2.4, y0, dz - 0.7, 6.2, y0 + 0.76, dz + 0.7, M.woodLight);
+      B.addBox(2.4, y0, dz - 0.7, 6.2, y0 + 0.76, dz + 0.7, M.woodLight, { collide: 'etage' });
       B.addBox(2.4, y0 + 0.76, dz - 0.04, 6.2, y0 + 1.14, dz + 0.04, M.anthracite);
     });
-    B.addBox(-6.8, y0, 56.2, -1.6, y0 + 0.78, 58.0, M.woodWarm);
+    B.addBox(-6.8, y0, 56.2, -1.6, y0 + 0.78, 58.0, M.woodWarm, { collide: 'etage' });
     for (let z = 19.0; z <= 56.0; z += 5.2) B.addBox(2.2, y1 - 0.04, z - 0.14, 6.4, y1, z + 0.14, M.ledWhite);
     B.addBox(-9.8, y1 - 0.04, 57.0, -0.5, y1, 57.3, M.ledWhite);
     B.flush();
@@ -2864,10 +3076,10 @@
   function buildMallRoof(g, M) {
     const B = new MeshBatcher(g);
     const y0 = Y_ROOF, pH = 0.88;
-    B.addBox(-2.9, y0 - 0.25, -0.25, MALL_BACK_X + 0.25, y0 + 0.05, 53.8, M.wallRoof, { cast: true });
+    B.addBox(-2.9, y0 - 0.25, -0.25, MALL_BACK_X + 0.25, y0 + 0.05, 50.7, M.wallRoof, { cast: true });
     B.addBox(MALL_LWING_X - 0.25, y0 - 0.25, 50.7, MALL_BACK_X + 0.25, y0 + 0.05, MALL_END_Z + 0.25, M.wallRoof, { cast: true });
-    B.addBox(-2.85, y0 - 0.28, 5.2, 0.0, y0 - 0.22, 53.6, M.woodSlat, { uvScale: 0.4 });
-    B.addBox(MALL_LWING_X, y0 - 0.28, 50.8, 0.0, y0 - 0.22, 53.6, M.woodSlat, { uvScale: 0.4 });
+    B.addBox(-2.85, y0 - 0.31, 5.2, -0.04, y0 - 0.265, 53.56, M.woodSlat, { uvScale: 0.4 });
+    B.addBox(MALL_LWING_X, y0 - 0.31, 50.8, -2.85, y0 - 0.265, 53.56, M.woodSlat, { uvScale: 0.4 });
 
     B.addBox(-2.95, y0, -0.3, -2.65, y0 + pH, 51.0, M.wallExt, { cast: true });
     B.addBox(-3.00, y0 + pH, -0.32, -2.62, y0 + pH + 0.08, 51.02, M.anthracite);
@@ -2897,13 +3109,13 @@
     canopy:       { mode: 'walk', pos: [-22.5, Y_RDC + EYE_H, -33.0], yaw: -0.78, pitch: 0.06, floor: 'rdc', badge: 'Station Afriquia · Auvent' },
     ne_totem:     { mode: 'walk', pos: [2.0, Y_RDC + EYE_H, -55.0], yaw: -2.25, pitch: 0.10, floor: 'rdc', badge: 'Angle Nord-Est · Totem & Îlot' },
     minibrahim:   { mode: 'walk', pos: [-13.5, Y_RDC + EYE_H, -19.5], yaw: -1.52, pitch: 0.05, floor: 'rdc', badge: 'Mini Brahim · Supérette 24/24' },
-    cafe:         { mode: 'walk', pos: [-6.8, Y_RDC + EYE_H, -25.2], yaw: -1.35, pitch: 0.0, floor: 'rdc', badge: 'Oasis Café & Terrasse' },
+    cafe:         { mode: 'walk', pos: [-7.3, Y_RDC + EYE_H, -25.2], yaw: -1.35, pitch: 0.0, floor: 'rdc', badge: 'Oasis Café & Terrasse' },
     service_bay:  { mode: 'walk', pos: [-10.0, Y_RDC + EYE_H, -9.6], yaw: -1.57, pitch: 0.0, floor: 'rdc', badge: 'Station · Baie de Service' },
     gallery:      { mode: 'walk', pos: [-1.4, Y_RDC + EYE_H, 16.0], yaw: 3.10, pitch: 0.0, floor: 'rdc', badge: 'RDC · Galerie Commerciale' },
     shop31:       { mode: 'walk', pos: [1.8, Y_RDC + EYE_H, 26.8], yaw: -1.55, pitch: -0.02, floor: 'rdc', badge: 'RDC · Boutique 31m² & Colimaçon' },
     palms:        { mode: 'walk', pos: [-9.8, Y_RDC + EYE_H, 46.2], yaw: -2.42, pitch: 0.05, floor: 'rdc', badge: 'RDC · Cour des Palmiers' },
     stairs_rdc:   { mode: 'walk', pos: [1.8, Y_RDC + EYE_H, 5.8], yaw: -1.52, pitch: 0.06, floor: 'rdc', badge: 'RDC · Hall Accès Étage' },
-    dark_kitchen: { mode: 'walk', pos: [4.8, Y_SSOL + EYE_H, 13.0], yaw: 0.15, pitch: -0.02, floor: 'ssol', badge: 'Sous-sol · Dark Kitchen (125 m²)' },
+    dark_kitchen: { mode: 'walk', pos: [4.2, Y_SSOL + EYE_H, 11.2], yaw: 0.15, pitch: -0.02, floor: 'ssol', badge: 'Sous-sol · Dark Kitchen (125 m²)' },
     ssol_units:   { mode: 'walk', pos: [2.0, Y_SSOL + EYE_H, 22.8], yaw: 2.85, pitch: -0.02, floor: 'ssol', badge: 'Sous-sol · Réserves 31 m²' },
     ssol_corner:  { mode: 'walk', pos: [2.2, Y_SSOL + EYE_H, 56.5], yaw: 1.55, pitch: 0.0, floor: 'ssol', badge: 'Sous-sol · Angle 75 m²' },
     etage_admin:  { mode: 'walk', pos: [1.4, Y_ETAGE + EYE_H, 6.8], yaw: -0.25, pitch: 0.0, floor: 'etage', badge: '1er Étage · Coursive & Admin' },
@@ -3368,7 +3580,7 @@
   }
 
   // =========================================================================
-  // ANIMATE LIVING HUMANS & FAMILIES
+  // ANIMATE LIVING HUMANS & LIVE TRAFFIC CARS
   // =========================================================================
   function updatePeople(dt, elapsed) {
     for (let i = 0; i < animatedPeople.length; i++) {
@@ -3380,16 +3592,90 @@
         else if (p.t <= 0) { p.t = 0; p.dir = 1; }
         const cx = p.x1 + (p.x2 - p.x1) * p.t;
         const cz = p.z1 + (p.z2 - p.z1) * p.t;
-        p.rig.root.position.set(cx, p.y, cz);
+        const gait = elapsed * (4.6 + p.speed * 0.8) + i * 1.3;
+        const swing = Math.sin(gait) * 0.40;
+        const bob = Math.abs(Math.sin(gait)) * 0.024;
+        p.rig.root.position.set(cx, p.y + bob, cz);
         const dx = (p.x2 - p.x1) * p.dir, dz = (p.z2 - p.z1) * p.dir;
         p.rig.root.rotation.y = Math.atan2(dx, dz);
-        const swing = Math.sin(elapsed * 5.2 + i) * 0.42;
-        p.rig.legL.rotation.x = swing; p.rig.legR.rotation.x = -swing;
-        p.rig.armL.rotation.x = -swing * 0.65; p.rig.armR.rotation.x = swing * 0.65;
+        // Natural human knee flexion & opposite arm swing
+        p.rig.legL.rotation.x = swing;
+        p.rig.legR.rotation.x = -swing;
+        p.rig.legL.userData.knee.rotation.x = Math.max(0.04, -Math.sin(gait - 0.35) * 0.56);
+        p.rig.legR.userData.knee.rotation.x = Math.max(0.04,  Math.sin(gait - 0.35) * 0.56);
+        p.rig.armL.rotation.x = -swing * 0.58;
+        p.rig.armR.rotation.x =  swing * 0.58;
+        p.rig.armL.userData.elbow.rotation.x = -0.16 - Math.max(0,  swing * 0.35);
+        p.rig.armR.userData.elbow.rotation.x = -0.16 - Math.max(0, -swing * 0.35);
+        if (p.rig.bodyGrp) p.rig.bodyGrp.rotation.y = -swing * 0.14;
       } else if (p.type === 'work') {
-        const w = Math.sin(elapsed * 2.2 + p.phase) * 0.16;
-        p.rig.armR.rotation.x = -0.35 + w;
-        p.rig.armL.rotation.x = -0.25 - w * 0.6;
+        const w = Math.sin(elapsed * 2.0 + p.phase) * 0.14;
+        p.rig.armR.rotation.x = -0.32 + w;
+        p.rig.armL.rotation.x = -0.22 - w * 0.55;
+        if (p.rig.headGrp) p.rig.headGrp.rotation.y = Math.sin(elapsed * 0.7 + p.phase) * 0.22;
+      } else if (p.type === 'seated') {
+        if (p.rig.headGrp) {
+          p.rig.headGrp.rotation.y = Math.sin(elapsed * 0.55 + p.phase) * 0.18;
+          p.rig.headGrp.rotation.x = Math.sin(elapsed * 0.9 + p.phase) * 0.04;
+        }
+      }
+    }
+  }
+
+  const _carPosA = new THREE.Vector3(), _carPosB = new THREE.Vector3();
+  function updateTraffic(dt) {
+    for (let i = 0; i < animatedCars.length; i++) {
+      const c = animatedCars[i];
+      if (c.roadMode !== 'all' && c.roadMode !== roadMode) continue;
+
+      if (c.type === 'linear') {
+        c.pos += c.speed * c.dir * dt;
+        if (c.dir > 0 && c.pos > c.max) c.pos = c.min;
+        else if (c.dir < 0 && c.pos < c.min) c.pos = c.max;
+        if (c.axis === 'X') c.car.grp.position.x = c.pos;
+        else c.car.grp.position.z = c.pos;
+        const spin = (c.speed * dt) / c.wheelR;
+        c.car.wheels.forEach(w => { w.rotation.x += spin; });
+      } else if (c.type === 'curve') {
+        // Slower, realistic forecourt speed inside the Afriquia station!
+        let targetSpd = (c.t > 0.24 && c.t < 0.74) ? 4.4 : c.baseSpeed * 1.45;
+        // Politely brake if the walking player, drivable SUV, or another car is right in front!
+        if (c.politeBrake) {
+          if (navMode !== 'orbit') {
+            const px = navMode === 'suv' ? suv.pos.x : player.pos.x;
+            const pz = navMode === 'suv' ? suv.pos.z : player.pos.z;
+            const d = Math.hypot(px - c.car.grp.position.x, pz - c.car.grp.position.z);
+            if (d < 4.8 && (navMode === 'suv' || player.floor === 'rdc')) targetSpd = 0;
+          }
+          const hAng = c.car.grp.rotation.y;
+          const fx = Math.sin(hAng), fz = Math.cos(hAng);
+          for (let j = 0; j < animatedCars.length; j++) {
+            if (j === i) continue;
+            const o = animatedCars[j];
+            if (o.roadMode !== 'all' && o.roadMode !== roadMode) continue;
+            const ddx = o.car.grp.position.x - c.car.grp.position.x;
+            const ddz = o.car.grp.position.z - c.car.grp.position.z;
+            const ahead = ddx * fx + ddz * fz;
+            const side = Math.abs(ddx * fz - ddz * fx);
+            if (ahead > 0.5 && ahead < 8.5 && side < 3.0) { targetSpd = 0; break; }
+          }
+        }
+        c.curSpeed += (targetSpd - c.curSpeed) * Math.min(1, dt * 4.5);
+        c.t = (c.t + (c.curSpeed * dt) / c.len) % 1.0;
+
+        c.curve.getPointAt(c.t, _carPosA);
+        c.curve.getPointAt((c.t + 0.008) % 1.0, _carPosB);
+        const dx = _carPosB.x - _carPosA.x, dz = _carPosB.z - _carPosA.z;
+        const newHeading = Math.atan2(dx, dz);
+        const prevHeading = c.car.grp.rotation.y;
+        c.car.grp.position.set(_carPosA.x, 0, _carPosA.z);
+        c.car.grp.rotation.y = newHeading;
+
+        const steerDiff = Math.atan2(Math.sin(newHeading - prevHeading), Math.cos(newHeading - prevHeading));
+        const steerVis = Math.max(-0.42, Math.min(0.42, steerDiff * 14));
+        c.car.frontPivots.forEach(p => { p.rotation.y = steerVis; });
+        const spin = (c.curSpeed * dt) / c.wheelR;
+        c.car.wheels.forEach(w => { w.rotation.x += spin; });
       }
     }
   }
@@ -3591,6 +3877,7 @@
       skyMesh.material.uniforms.uTime.value = elapsedTotal;
     }
     updatePeople(dt, elapsedTotal);
+    updateTraffic(dt);
 
     if (navMode === 'walk') {
       if (player.lerpT < 1.0 && player.targetPos) {
@@ -3632,9 +3919,15 @@
           av.root.position.set(player.pos.x, player.pos.y - EYE_H, player.pos.z);
           av.root.rotation.y = player.yaw + Math.PI;
           const moving = len > 0.001 || (player.activeSpiral && (fwd || bwd));
-          const sw = moving ? Math.sin(player.walkPhase * 1.4) * 0.45 : 0;
+          const ph = player.walkPhase * 1.4;
+          const sw = moving ? Math.sin(ph) * 0.42 : 0;
           av.legL.rotation.x = sw; av.legR.rotation.x = -sw;
-          av.armL.rotation.x = -sw * 0.65; av.armR.rotation.x = sw * 0.65;
+          av.legL.userData.knee.rotation.x = moving ? Math.max(0.04, -Math.sin(ph - 0.35) * 0.56) : 0.04;
+          av.legR.userData.knee.rotation.x = moving ? Math.max(0.04,  Math.sin(ph - 0.35) * 0.56) : 0.04;
+          av.armL.rotation.x = -sw * 0.60; av.armR.rotation.x = sw * 0.60;
+          av.armL.userData.elbow.rotation.x = moving ? (-0.16 - Math.max(0,  sw * 0.35)) : -0.16;
+          av.armR.userData.elbow.rotation.x = moving ? (-0.16 - Math.max(0, -sw * 0.35)) : -0.16;
+          if (av.bodyGrp) av.bodyGrp.rotation.y = moving ? -sw * 0.14 : 0;
         }
       }
 
