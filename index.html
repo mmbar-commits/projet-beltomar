@@ -870,7 +870,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     const M = {
       asphalt:      new THREE.MeshStandardMaterial({ map: T.asphalt, bumpMap: T.asphaltBump, bumpScale: 0.04, roughness: 0.88, metalness: 0.05 }),
       forecourt:    new THREE.MeshStandardMaterial({ map: T.forecourt, bumpMap: T.stuccoBump, bumpScale: 0.028, roughness: 0.80, metalness: 0.03 }),
-      earth:        new THREE.MeshStandardMaterial({ map: T.earth, roughness: 0.97 }),
+      earth:        new THREE.MeshStandardMaterial({ map: T.earth, color: 0xe6dccb, roughness: 0.94 }),
       pavers:       new THREE.MeshStandardMaterial({ map: T.pavers, bumpMap: T.stuccoBump, bumpScale: 0.025, roughness: 0.82 }),
       balconyTile:  new THREE.MeshStandardMaterial({ map: T.balconyTile, roughness: 0.45, metalness: 0.10 }),
       terrazzo:     new THREE.MeshStandardMaterial({ map: T.terrazzo, roughness: 0.24, metalness: 0.12 }),
@@ -946,12 +946,13 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
       mat.needsUpdate = true;
     }
 
-    applyPBR(M.asphalt,       'asphalt',  1, 1, 0xc8ccd2, 0.94, 0.05, 1.05);
-    applyPBR(M.forecourt,     'concrete', 1, 1, 0xf2ece2, 0.88, 0.04, 0.72);
-    applyPBR(M.pavers,        'pavers',   1, 1, 0xeee9e0, 0.86, 0.04, 0.90);
-    applyPBR(M.wallExt,       'plaster',  1, 1, 0xf8f3eb, 0.88, 0.02, 0.55);
-    applyPBR(M.fence,         'plaster',  1, 1, 0xeee7dc, 0.90, 0.02, 0.65);
-    applyPBR(M.wallConcrete,  'concrete', 1, 1, 0xd8d5ce, 0.86, 0.03, 0.65);
+    // BRAND-NEW Clean Asphalt, Smooth Architectural Concrete & Crisp White Plaster (Brand-New Project Look!)
+    applyPBR(M.asphalt,       'asphalt_new',  1, 1, 0x4b5058, 0.82, 0.06, 0.45);
+    applyPBR(M.forecourt,     'concrete_new', 1, 1, 0xf2eee6, 0.74, 0.04, 0.32);
+    applyPBR(M.pavers,        'pavers',       1, 1, 0xf2eee7, 0.82, 0.04, 0.68);
+    applyPBR(M.wallExt,       'plaster_new',  1, 1, 0xfcfaf6, 0.82, 0.02, 0.28);
+    applyPBR(M.fence,         'plaster_new',  1, 1, 0xf3eee6, 0.85, 0.02, 0.34);
+    applyPBR(M.wallConcrete,  'concrete_new', 1, 1, 0xe2dfd8, 0.80, 0.03, 0.38);
     applyPBR(M.woodSlat,      'wood',     1, 1, 0xc79563, 0.74, 0.03, 0.85);
     applyPBR(M.woodWarm,      'wood',     1, 1, 0xa86f42, 0.68, 0.03, 0.70);
     applyPBR(M.woodLight,     'wood',     1, 1, 0xd6b084, 0.66, 0.02, 0.60);
@@ -1238,122 +1239,209 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
   }
 
   // =========================================================================
-  // REALISTIC CINEMATIC VEHICLES (SUV & Parked Sedans with Ground AO Shadows!)
+  // REALISTIC EVERYDAY MOROCCAN VEHICLES (Family Hatchback, Sedan, SUV & Utility Delivery Van / Camionnette!)
   // =========================================================================
-  function createRealisticVehicle(colorHex, isSUV = false, aoMat = null) {
-    const grp = new THREE.Group();
-    const bodyMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.20, metalness: 0.68 });
-    const glassMat = new THREE.MeshStandardMaterial({ color: 0x101824, roughness: 0.06, metalness: 0.90 });
-    const trimMat = new THREE.MeshStandardMaterial({ color: 0x181b20, roughness: 0.68 });
-    const rimMat = new THREE.MeshStandardMaterial({ color: 0xcbd2da, roughness: 0.22, metalness: 0.88 });
-    const headMat = new THREE.MeshBasicMaterial({ color: 0xfff8e1 });
-    const tailMat = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
+  function createRealisticVehicle(colorHex, mode = 'sedan', aoMat = null) {
+    // Support legacy boolean arg (true -> 'suv', false -> 'sedan') as well as 'hatch' | 'sedan' | 'suv' | 'van'
+    const vType = typeof mode === 'boolean' ? (mode ? 'suv' : 'sedan') : mode;
+    const isSUV = vType === 'suv';
+    const isVan = vType === 'van';
+    const isHatch = vType === 'hatch';
 
-    // Ground Contact Shadow AO underneath the car (instant film grounding!)
+    const grp = new THREE.Group();
+    const bodyMat = new THREE.MeshPhysicalMaterial({
+      color: colorHex, roughness: isVan ? 0.28 : 0.16, metalness: isVan ? 0.22 : 0.62,
+      clearcoat: isVan ? 0.55 : 1.0, clearcoatRoughness: 0.06, envMapIntensity: 1.65
+    });
+    const glassMat = new THREE.MeshPhysicalMaterial({
+      color: 0x0d1520, roughness: 0.04, metalness: 0.15, clearcoat: 1.0, reflectivity: 1.0, envMapIntensity: 2.2
+    });
+    const trimMat = new THREE.MeshStandardMaterial({ color: 0x1b1e23, roughness: 0.72, metalness: 0.10 });
+    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xdbe2ea, roughness: 0.14, metalness: 0.92, envMapIntensity: 1.8 });
+    const rimMat = new THREE.MeshStandardMaterial({ color: isVan ? 0x9aa2ac : 0xd2d8df, roughness: 0.22, metalness: 0.86 });
+    const tireMat = new THREE.MeshStandardMaterial({ color: 0x17191d, roughness: 0.88 });
+    const headMat = new THREE.MeshStandardMaterial({ color: 0xfff8e6, emissive: 0xfff3d0, emissiveIntensity: 0.45, roughness: 0.10, metalness: 0.2 });
+    const tailMat = new THREE.MeshStandardMaterial({ color: 0xb91c1c, emissive: 0xdc2626, emissiveIntensity: 0.55, roughness: 0.18 });
+    const plateMat = new THREE.MeshStandardMaterial({ color: 0xf4f6f8, roughness: 0.45 });
+
+    // Ground Contact Shadow AO underneath the vehicle
+    const aoW = isVan ? 2.65 : (isSUV ? 2.55 : 2.35);
+    const aoL = isVan ? 5.65 : (isSUV ? 5.30 : (isHatch ? 4.75 : 5.05));
     if (aoMat) {
-      const sh = new THREE.Mesh(new THREE.PlaneGeometry(isSUV ? 2.55 : 2.35, isSUV ? 5.4 : 4.8), aoMat);
+      const sh = new THREE.Mesh(new THREE.PlaneGeometry(aoW, aoL), aoMat);
       sh.rotation.x = -Math.PI / 2; sh.position.y = 0.025;
       grp.add(sh);
     }
 
+    // Profile Shape in 2D (Note: rotateY(PI/2) maps 2D -X -> +Z FRONT, +X -> -Z REAR!)
     const s = new THREE.Shape();
-    if (isSUV) {
-      // Sculpted Modern Family SUV (4.72m long, 1.94m wide, 1.72m tall!)
-      s.moveTo(-2.34, 0.42);
-      s.lineTo(-2.36, 0.82);
-      s.quadraticCurveTo(-2.28, 1.06, -1.68, 1.12); // Strong SUV hood
-      s.lineTo(-0.88, 1.16);
-      s.lineTo(-0.34, 1.69); // Sloped windshield
-      s.lineTo(1.52, 1.70);  // Long family SUV roofline
-      s.quadraticCurveTo(2.05, 1.65, 2.24, 1.12); // SUV tailgate
-      s.lineTo(2.34, 0.96);
-      s.quadraticCurveTo(2.38, 0.65, 2.32, 0.42);
+    let width = 1.74, zFront = 2.24, zRear = -2.22, hLight = 0.74, wheelR = 0.34, wzF = 1.35, wzR = -1.32;
+
+    if (isVan) {
+      // Utility Delivery Van / Camionnette (Renault Kangoo / Ford Transit Custom style — 4.82m long, 2.02m tall!)
+      width = 1.84; zFront = 2.40; zRear = -2.42; hLight = 0.88; wheelR = 0.36; wzF = 1.50; wzR = -1.48;
+      s.moveTo(-2.36, 0.36);
+      s.lineTo(-2.40, 0.82);
+      s.quadraticCurveTo(-2.34, 1.12, -1.94, 1.20); // Short van hood
+      s.lineTo(-1.42, 1.24);
+      s.lineTo(-0.96, 1.98); // Steep commercial windshield
+      s.lineTo(2.26, 2.00);  // Flat high cargo roof
+      s.quadraticCurveTo(2.40, 1.96, 2.42, 1.74);
+      s.lineTo(2.42, 0.42);  // Vertical rear cargo barn doors
+      s.quadraticCurveTo(2.38, 0.36, 2.24, 0.36);
+      s.closePath();
+    } else if (isSUV) {
+      // Everyday Family SUV (Dacia Duster / Hyundai Tucson / VW Tiguan style — 4.58m long, 1.70m tall!)
+      width = 1.82; zFront = 2.30; zRear = -2.28; hLight = 0.86; wheelR = 0.38; wzF = 1.42; wzR = -1.38;
+      s.moveTo(-2.26, 0.42);
+      s.lineTo(-2.30, 0.82);
+      s.quadraticCurveTo(-2.22, 1.05, -1.66, 1.10);
+      s.lineTo(-0.88, 1.15);
+      s.lineTo(-0.34, 1.66);
+      s.lineTo(1.48, 1.68);
+      s.quadraticCurveTo(1.98, 1.62, 2.18, 1.12);
+      s.lineTo(2.26, 0.94);
+      s.quadraticCurveTo(2.30, 0.62, 2.24, 0.42);
+      s.closePath();
+    } else if (isHatch) {
+      // Everyday Family Compact Hatchback (Dacia Sandero / Renault Clio / Peugeot 208 style — 4.22m long, 1.48m tall!)
+      width = 1.72; zFront = 2.12; zRear = -2.08; hLight = 0.72; wheelR = 0.32; wzF = 1.30; wzR = -1.26;
+      s.moveTo(-2.08, 0.32);
+      s.lineTo(-2.12, 0.64);
+      s.quadraticCurveTo(-2.02, 0.88, -1.52, 0.94);
+      s.lineTo(-0.78, 1.00);
+      s.lineTo(-0.26, 1.46);
+      s.lineTo(1.18, 1.47);
+      s.quadraticCurveTo(1.68, 1.42, 1.98, 0.98);
+      s.lineTo(2.08, 0.74);
+      s.quadraticCurveTo(2.10, 0.44, 2.02, 0.32);
       s.closePath();
     } else {
-      // Sculpted Modern Sedan
-      s.moveTo(-2.16, 0.36);
-      s.lineTo(-2.18, 0.64);
-      s.quadraticCurveTo(-2.08, 0.86, -1.56, 0.92);
+      // Everyday Family Sedan (Dacia Logan / Renault Mégane / Hyundai Accent style — 4.50m long, 1.46m tall!)
+      width = 1.74; zFront = 2.24; zRear = -2.22; hLight = 0.72; wheelR = 0.33; wzF = 1.36; wzR = -1.32;
+      s.moveTo(-2.20, 0.32);
+      s.lineTo(-2.24, 0.64);
+      s.quadraticCurveTo(-2.14, 0.86, -1.58, 0.92);
       s.lineTo(-0.82, 0.98);
       s.lineTo(-0.28, 1.44);
-      s.lineTo(0.88, 1.45);
-      s.quadraticCurveTo(1.42, 1.40, 1.76, 0.98);
-      s.lineTo(2.12, 0.92);
-      s.quadraticCurveTo(2.20, 0.72, 2.14, 0.36);
+      s.lineTo(0.92, 1.45);
+      s.quadraticCurveTo(1.46, 1.38, 1.76, 0.98);
+      s.lineTo(2.16, 0.92);
+      s.quadraticCurveTo(2.24, 0.70, 2.18, 0.32);
       s.closePath();
     }
-    const width = isSUV ? 1.82 : 1.68;
-    const bodyGeo = new THREE.ExtrudeGeometry(s, { depth: width, bevelEnabled: true, bevelThickness: 0.07, bevelSize: 0.06, bevelSegments: 2 });
+
+    const bodyGeo = new THREE.ExtrudeGeometry(s, { depth: width, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.06, bevelSegments: 3 });
     bodyGeo.translate(0, 0, -width / 2);
     bodyGeo.rotateY(Math.PI / 2);
     const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.castShadow = true;
+    body.castShadow = true; body.receiveShadow = true;
     grp.add(body);
 
-    // Side & windshield tinted glass band
+    // Side & Windshield Tinted Glass Band (Van has front cab windows only + closed commercial cargo panels!)
     const gs = new THREE.Shape();
-    if (isSUV) {
-      gs.moveTo(-0.84, 1.16); gs.lineTo(-0.32, 1.64); gs.lineTo(1.48, 1.65); gs.lineTo(2.06, 1.15); gs.closePath();
+    if (isVan) {
+      gs.moveTo(-1.38, 1.24); gs.lineTo(-0.92, 1.92); gs.lineTo(0.08, 1.92); gs.lineTo(0.10, 1.24); gs.closePath();
+    } else if (isSUV) {
+      gs.moveTo(-0.84, 1.15); gs.lineTo(-0.32, 1.61); gs.lineTo(1.44, 1.62); gs.lineTo(1.98, 1.14); gs.closePath();
+    } else if (isHatch) {
+      gs.moveTo(-0.74, 1.00); gs.lineTo(-0.24, 1.41); gs.lineTo(1.14, 1.42); gs.lineTo(1.74, 1.00); gs.closePath();
     } else {
-      gs.moveTo(-0.78, 0.98); gs.lineTo(-0.26, 1.40); gs.lineTo(0.84, 1.41); gs.lineTo(1.62, 0.98); gs.closePath();
+      gs.moveTo(-0.78, 0.98); gs.lineTo(-0.26, 1.39); gs.lineTo(0.88, 1.40); gs.lineTo(1.62, 0.98); gs.closePath();
     }
-    const gGeo = new THREE.ExtrudeGeometry(gs, { depth: width + 0.06, bevelEnabled: false });
-    gGeo.translate(0, 0, -(width + 0.06) / 2);
+    const gGeo = new THREE.ExtrudeGeometry(gs, { depth: width + 0.05, bevelEnabled: false });
+    gGeo.translate(0, 0, -(width + 0.05) / 2);
     gGeo.rotateY(Math.PI / 2);
     grp.add(new THREE.Mesh(gGeo, glassMat));
 
-    // Roof rails for Family SUV!
-    if (isSUV) {
-      [-0.72, 0.72].forEach(rx => {
-        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 1.85), rimMat);
-        rail.position.set(rx, 1.77, -0.58);
-        grp.add(rail);
+    // Matte-black B-pillars / side body molding / commercial cargo ribs
+    if (isVan) {
+      // Commercial black side rub strips + rear double-door vertical seam + high brake light!
+      [-width/2 - 0.05, width/2 + 0.05].forEach(sx => {
+        const rub = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.14, 3.65), trimMat);
+        rub.position.set(sx, 0.62, -0.10); grp.add(rub);
       });
+      const seam = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.42, 0.04), trimMat);
+      seam.position.set(0, 1.22, zRear - 0.04); grp.add(seam);
+      const topBrake = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.06, 0.04), tailMat);
+      topBrake.position.set(0, 1.94, zRear - 0.04); grp.add(topBrake);
+    } else {
+      // B-pillars dividing front & rear doors cleanly
+      [-width/2 - 0.032, width/2 + 0.032].forEach(sx => {
+        const bp = new THREE.Mesh(new THREE.BoxGeometry(0.02, isSUV ? 0.46 : 0.40, 0.11), trimMat);
+        bp.position.set(sx, isSUV ? 1.38 : 1.19, -0.08); grp.add(bp);
+        // Chrome/body door handles
+        [0.18, -0.68].forEach(hz => {
+          const dh = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.035, 0.14), chromeMat);
+          dh.position.set(sx * 1.03, isSUV ? 1.02 : 0.88, hz); grp.add(dh);
+        });
+      });
+      // Rear window glass
+      const rearWin = new THREE.Mesh(new THREE.BoxGeometry(width * 0.78, isSUV ? 0.42 : 0.34, 0.06), glassMat);
+      rearWin.position.set(0, isSUV ? 1.38 : 1.20, isSUV ? -2.06 : (isHatch ? -1.82 : -1.58));
+      rearWin.rotation.x = isSUV ? 0.30 : 0.62; grp.add(rearWin);
     }
 
-    // Grille, Headlights (facing +Z!), Taillights, Rear Window, Bumper & Moroccan License Plate (at -Z!)
-    const zFront = isSUV ? 2.38 : 2.18, zRear = isSUV ? -2.36 : -2.16;
-    const hLight = isSUV ? 0.88 : 0.70;
-    const grille = new THREE.Mesh(new THREE.BoxGeometry(1.18, 0.28, 0.06), trimMat);
-    grille.position.set(0, hLight - 0.12, zFront); grp.add(grille);
-    // Lower dark front & rear SUV bumpers + diffuser
-    const bumpR = new THREE.Mesh(new THREE.BoxGeometry(width + 0.04, 0.22, 0.10), trimMat);
-    bumpR.position.set(0, 0.48, zRear - 0.02); grp.add(bumpR);
-    const bumpF = new THREE.Mesh(new THREE.BoxGeometry(width + 0.04, 0.20, 0.10), trimMat);
-    bumpF.position.set(0, 0.48, zFront + 0.02); grp.add(bumpF);
-    // Tinted rear windshield (lunette arrière) + license plate recess on tailgate!
+    // SUV Roof Rails + Protective Black Wheel-Arch Cladding + Silver Skid Plates!
     if (isSUV) {
-      const rearWin = new THREE.Mesh(new THREE.BoxGeometry(1.44, 0.44, 0.08), glassMat);
-      rearWin.position.set(0, 1.40, -2.16); rearWin.rotation.x = 0.28; grp.add(rearWin);
-      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.12, 0.04), new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.4 }));
-      plate.position.set(0, 0.78, zRear - 0.04); grp.add(plate);
-      const lightBar = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.055, 0.05), tailMat);
-      lightBar.position.set(0, hLight + 0.14, zRear - 0.03); grp.add(lightBar);
+      [-0.72, 0.72].forEach(rx => {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.055, 1.78), chromeMat);
+        rail.position.set(rx, 1.75, -0.56); grp.add(rail);
+      });
+      const skidF = new THREE.Mesh(new THREE.BoxGeometry(1.10, 0.12, 0.08), chromeMat);
+      skidF.position.set(0, 0.38, zFront + 0.04); grp.add(skidF);
+      const skidR = new THREE.Mesh(new THREE.BoxGeometry(1.10, 0.12, 0.08), chromeMat);
+      skidR.position.set(0, 0.38, zRear - 0.04); grp.add(skidR);
     }
-    [-0.68, 0.68].forEach(lx => {
-      const hl = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.14, 0.06), headMat);
-      hl.position.set(lx, hLight, zFront); grp.add(hl);
-      const tl = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.15, 0.06), tailMat);
-      tl.position.set(lx, hLight + 0.12, zRear - 0.02); grp.add(tl);
+
+    // Front Radiator Grille + Chrome Horizontal Slats + Bumpers + Headlights + Taillights + Moroccan Plates!
+    const grille = new THREE.Mesh(new THREE.BoxGeometry(1.14, isVan ? 0.34 : 0.24, 0.08), trimMat);
+    grille.position.set(0, hLight - 0.06, zFront + 0.02); grp.add(grille);
+    const chromeBar = new THREE.Mesh(new THREE.BoxGeometry(1.06, 0.035, 0.09), chromeMat);
+    chromeBar.position.set(0, hLight - 0.02, zFront + 0.03); grp.add(chromeBar);
+    const bumpF = new THREE.Mesh(new THREE.BoxGeometry(width + 0.06, isVan ? 0.28 : 0.20, 0.12), trimMat);
+    bumpF.position.set(0, isVan ? 0.46 : 0.42, zFront + 0.02); grp.add(bumpF);
+    const bumpR = new THREE.Mesh(new THREE.BoxGeometry(width + 0.06, isVan ? 0.28 : 0.20, 0.12), trimMat);
+    bumpR.position.set(0, isVan ? 0.46 : 0.42, zRear - 0.02); grp.add(bumpR);
+    // Front & Rear Moroccan License Plates
+    const plateF = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.11, 0.04), plateMat);
+    plateF.position.set(0, 0.48, zFront + 0.08); grp.add(plateF);
+    const plateR = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.11, 0.04), plateMat);
+    plateR.position.set(0, isVan ? 0.66 : 0.72, zRear - 0.06); grp.add(plateR);
+
+    [-width * 0.37, width * 0.37].forEach(lx => {
+      const hl = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.14, 0.07), headMat);
+      hl.position.set(lx, hLight, zFront + 0.02); grp.add(hl);
+      const tl = new THREE.Mesh(new THREE.BoxGeometry(isVan ? 0.18 : 0.40, isVan ? 0.44 : 0.15, 0.07), tailMat);
+      tl.position.set(lx * (isVan ? 1.15 : 1.0), isVan ? 1.05 : hLight + 0.12, zRear - 0.03); grp.add(tl);
     });
     // Side Mirrors
     [-width/2 - 0.12, width/2 + 0.12].forEach(mx => {
-      const mir = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.11, 0.14), bodyMat);
-      mir.position.set(mx, isSUV ? 1.24 : 1.04, isSUV ? 0.62 : 0.48); grp.add(mir);
+      const mir = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.14), isVan ? trimMat : bodyMat);
+      mir.position.set(mx, isVan ? 1.38 : (isSUV ? 1.24 : 1.04), isVan ? 1.02 : (isSUV ? 0.60 : 0.48)); grp.add(mir);
     });
 
-    // 4 Realistic Wheels + Alloy Rims (returned separately for SUV steering/spin!)
-    const wheelR = isSUV ? 0.39 : 0.33;
-    const tireGeo = new THREE.CylinderGeometry(wheelR, wheelR, 0.26, 16); tireGeo.rotateZ(Math.PI / 2);
-    const rimGeo = new THREE.CylinderGeometry(wheelR * 0.62, wheelR * 0.62, 0.275, 12); rimGeo.rotateZ(Math.PI / 2);
-    const wx = isSUV ? 0.90 : 0.84, wzF = isSUV ? 1.44 : 1.32, wzR = isSUV ? -1.42 : -1.28;
+    // 4 Realistic Wheels + Multi-Spoke Alloy Rims + Hub Caps
+    const tireGeo = new THREE.CylinderGeometry(wheelR, wheelR, 0.25, 18); tireGeo.rotateZ(Math.PI / 2);
+    const rimGeo = new THREE.CylinderGeometry(wheelR * 0.64, wheelR * 0.64, 0.265, 14); rimGeo.rotateZ(Math.PI / 2);
+    const hubGeo = new THREE.CylinderGeometry(wheelR * 0.18, wheelR * 0.18, 0.278, 10); hubGeo.rotateZ(Math.PI / 2);
+    const spokeGeo = new THREE.BoxGeometry(0.272, wheelR * 1.12, 0.048);
+    const wx = width * 0.50 + 0.02;
     const wheels = [], frontPivots = [];
     [[wx, wzF, true], [-wx, wzF, true], [wx, wzR, false], [-wx, wzR, false]].forEach(([x, z, isFront]) => {
       const piv = new THREE.Group();
       piv.position.set(x, wheelR, z);
       const wGrp = new THREE.Group();
-      wGrp.add(new THREE.Mesh(tireGeo, trimMat));
+      wGrp.add(new THREE.Mesh(tireGeo, tireMat));
       wGrp.add(new THREE.Mesh(rimGeo, rimMat));
+      wGrp.add(new THREE.Mesh(hubGeo, trimMat));
+      if (!isVan) {
+        for (let k = 0; k < 3; k++) {
+          const sp = new THREE.Mesh(spokeGeo, trimMat);
+          sp.rotation.x = (k / 3) * Math.PI;
+          wGrp.add(sp);
+        }
+      }
       piv.add(wGrp);
       grp.add(piv);
       wheels.push(wGrp);
@@ -1364,91 +1452,64 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
   }
 
   // =========================================================================
-  // REALISTIC BOTANICAL TREES & PALMS (Alpha-Textured Foliage — Zero Plastic Balls!)
+  // PHOTOREALISTIC BOTANICAL PALMS & MEDITERRANEAN TREES (Real Studio Cutouts + 3D Volumetric Cross-Planes!)
   // =========================================================================
+  let photoPalmMat = null, photoTreeMat = null;
+  function getPhotoTreeMats() {
+    if (!photoPalmMat) {
+      const tl = new THREE.TextureLoader();
+      const pTex = tl.load('assets/vegetation/palm.png');
+      pTex.colorSpace = THREE.SRGBColorSpace; pTex.anisotropy = 8;
+      photoPalmMat = new THREE.MeshStandardMaterial({ map: pTex, alphaTest: 0.45, roughness: 0.78, metalness: 0.0, side: THREE.DoubleSide });
+      const tTex = tl.load('assets/vegetation/tree.png');
+      tTex.colorSpace = THREE.SRGBColorSpace; tTex.anisotropy = 8;
+      photoTreeMat = new THREE.MeshStandardMaterial({ map: tTex, alphaTest: 0.45, roughness: 0.82, metalness: 0.0, side: THREE.DoubleSide });
+    }
+    return { photoPalmMat, photoTreeMat };
+  }
+
   function addCinematicPalm(parent, x, z, height = 6.2, scale = 1.0, M) {
+    const { photoPalmMat } = getPhotoTreeMats();
     const grp = new THREE.Group();
     grp.position.set(x, 0, z);
-    const shAO = new THREE.Mesh(new THREE.PlaneGeometry(3.6 * scale, 3.6 * scale), M.contactAO);
-    shAO.rotation.x = -Math.PI / 2; shAO.position.y = 0.03; grp.add(shAO);
-
-    const segs = 9;
-    let topX = 0, topZ = 0;
-    for (let i = 0; i < segs; i++) {
-      const t = i / segs;
-      const rBot = (0.28 - t * 0.10) * scale, rTop = (0.26 - t * 0.10) * scale;
-      const sh = height / segs;
-      const sx = Math.sin(t * 1.45) * 0.40 * scale, sz = Math.cos(t * 1.15) * 0.20 * scale;
-      const seg = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, sh + 0.08, 8), M.barkMat);
-      seg.position.set(sx, i * sh + sh * 0.5, sz);
-      if (i % 3 === 0) seg.castShadow = true;
-      grp.add(seg);
-      topX = sx; topZ = sz;
+    const totalH = height * (0.95 + scale * 0.15);
+    const w = totalH * 0.657;
+    if (M && M.contactAO) {
+      const shAO = new THREE.Mesh(new THREE.PlaneGeometry(3.8 * scale, 3.8 * scale), M.contactAO);
+      shAO.rotation.x = -Math.PI / 2; shAO.position.y = 0.035; grp.add(shAO);
     }
-
-    // 14 Arching Alpha-Cutout Feathered Palm Fronds (3 curved segments each!)
-    const frondGeo = new THREE.PlaneGeometry(1.15 * scale, 1.05 * scale);
-    frondGeo.rotateX(-Math.PI / 2);
-    for (let i = 0; i < 14; i++) {
-      const tier = i < 5 ? 0 : 1;
-      const ang = (i / (tier === 0 ? 5 : 9)) * Math.PI * 2 + tier * 0.5;
-      const fGrp = new THREE.Group();
-      fGrp.position.set(topX, height + (tier === 0 ? 0.16 : 0.0), topZ);
-      fGrp.rotation.y = ang;
-      let px = 0, py = 0;
-      for (let j = 0; j < 3; j++) {
-        const pitch = (tier === 0 ? 0.60 : 0.26) - j * 0.36;
-        const len = 1.05 * scale * (1 - j * 0.12);
-        const hld = new THREE.Group();
-        hld.position.set(px + Math.cos(pitch) * len * 0.48, py + Math.sin(pitch) * len * 0.48, 0);
-        hld.rotation.z = pitch;
-        const leaf = new THREE.Mesh(frondGeo, M.palmFrondMat);
-        leaf.scale.set(1 - j * 0.15, 1, 1 - j * 0.12);
-        if (j === 1 && i % 2 === 0) leaf.castShadow = true;
-        hld.add(leaf);
-        fGrp.add(hld);
-        px += Math.cos(pitch) * len * 0.88;
-        py += Math.sin(pitch) * len * 0.88;
-      }
-      grp.add(fGrp);
-    }
+    // 3 Radial Intersected Vertical Planes (0°, 60°, 120°) -> True 3D Volumetric Silhouette From Every Angle (Street + Aerial!)
+    const geo = new THREE.PlaneGeometry(w, totalH);
+    geo.translate(0, totalH / 2, 0);
+    const baseRot = (x * 0.7 + z * 0.3);
+    [0, Math.PI / 3, (2 * Math.PI) / 3].forEach((a, idx) => {
+      const p = new THREE.Mesh(geo, photoPalmMat);
+      p.rotation.y = baseRot + a;
+      p.castShadow = (idx < 2);
+      p.receiveShadow = true;
+      grp.add(p);
+    });
     parent.add(grp);
   }
 
   function addCinematicTree(parent, x, z, h = 4.6, seed = 0, M) {
+    const { photoTreeMat } = getPhotoTreeMats();
     const grp = new THREE.Group();
     grp.position.set(x, 0, z);
-    const shAO = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 3.4), M.contactAO);
-    shAO.rotation.x = -Math.PI / 2; shAO.position.y = 0.03; grp.add(shAO);
-
-    // Sculpted trunk + angled limbs
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.18, h * 0.50, 7), M.barkMat);
-    trunk.position.y = h * 0.25; trunk.castShadow = true; grp.add(trunk);
-    for (let b = 0; b < 4; b++) {
-      const a = b * 1.57 + seed;
-      const br = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.08, h * 0.34, 5), M.barkMat);
-      br.position.set(Math.cos(a) * 0.42, h * 0.52, Math.sin(a) * 0.42);
-      br.rotation.z = -Math.cos(a) * 0.62; br.rotation.x = Math.sin(a) * 0.62;
-      grp.add(br);
+    const totalH = h * 1.15;
+    const w = totalH * 0.759;
+    if (M && M.contactAO) {
+      const shAO = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 3.6), M.contactAO);
+      shAO.rotation.x = -Math.PI / 2; shAO.position.y = 0.035; grp.add(shAO);
     }
-
-    // Layered Alpha-Cutout Botanical Leaf Cluster Planes (Cinematic foliage!)
-    const cardGeo = new THREE.PlaneGeometry(2.1 * (h / 4.6), 1.9 * (h / 4.6));
-    const placements = [
-      [0, h * 0.72, 0, 0, 0],
-      [0, h * 0.72, 0, Math.PI / 2, 0.15],
-      [0.65, h * 0.64, 0.55, 0.75, -0.2],
-      [-0.65, h * 0.66, 0.45, 2.2, 0.2],
-      [0.45, h * 0.63, -0.68, 1.3, 0.22],
-      [-0.55, h * 0.62, -0.58, 2.8, -0.18],
-      [0, h * 0.84, 0, 0.4, Math.PI / 2 - 0.18]
-    ];
-    placements.forEach(([px, py, pz, ry, rx], idx) => {
-      const card = new THREE.Mesh(cardGeo, M.treeLeafMat);
-      card.position.set(px * (h / 4.6), py, pz * (h / 4.6));
-      card.rotation.set(rx, ry + seed, 0);
-      if (idx < 2) card.castShadow = true;
-      grp.add(card);
+    const geo = new THREE.PlaneGeometry(w, totalH);
+    geo.translate(0, totalH / 2, 0);
+    [0, Math.PI / 3, (2 * Math.PI) / 3].forEach((a, idx) => {
+      const p = new THREE.Mesh(geo, photoTreeMat);
+      p.rotation.y = seed * 0.65 + a;
+      p.castShadow = (idx < 2);
+      p.receiveShadow = true;
+      grp.add(p);
     });
     parent.add(grp);
   }
@@ -1858,64 +1919,88 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     return { root, bodyGrp, legL, legR, armL, armR, headGrp };
   }
 
+  const photoHumanSpecs = {
+    afriquia:   { path: 'assets/people/afriquia.png',   aspect: 0.347 },
+    family:     { path: 'assets/people/family.png',     aspect: 0.925 },
+    man_walk:   { path: 'assets/people/man_walk.png',   aspect: 0.336 },
+    woman_walk: { path: 'assets/people/woman_walk.png', aspect: 0.428 },
+    office:     { path: 'assets/people/office.png',     aspect: 0.349 },
+    chef:       { path: 'assets/people/chef.png',       aspect: 0.314 }
+  };
+  const photoHumanMats = {};
+  function getPhotoHumanMat(key) {
+    if (!photoHumanMats[key]) {
+      const tex = new THREE.TextureLoader().load(photoHumanSpecs[key].path);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      photoHumanMats[key] = new THREE.MeshStandardMaterial({
+        map: tex, alphaTest: 0.42, roughness: 0.88, metalness: 0.0, side: THREE.DoubleSide
+      });
+    }
+    return photoHumanMats[key];
+  }
+
+  function createPhotoHuman(key, height = 1.78, aoMat = null, flipX = false) {
+    const spec = photoHumanSpecs[key];
+    const w = height * spec.aspect;
+    const root = new THREE.Group();
+    if (aoMat) {
+      const shW = key === 'family' ? w * 1.12 : Math.max(0.75, w * 1.25);
+      const sh = new THREE.Mesh(new THREE.PlaneGeometry(shW, 0.72), aoMat);
+      sh.rotation.x = -Math.PI / 2; sh.position.y = 0.025;
+      root.add(sh);
+    }
+    const geo = new THREE.PlaneGeometry(w, height);
+    geo.translate(0, height / 2, 0);
+    const card = new THREE.Mesh(geo, getPhotoHumanMat(key));
+    if (flipX) card.scale.x = -1;
+    card.castShadow = true;
+    card.receiveShadow = true;
+    root.add(card);
+    return { root, card };
+  }
+
   function populateHumansAndFamilies(g, M) {
-    function addWalker(x1, z1, x2, z2, y, speed, opts, phase = 0) {
-      const rig = createHumanRig(opts, M.contactAO);
-      rig.root.position.set(x1, y, z1);
-      g.add(rig.root);
-      animatedPeople.push({ type: 'walk', rig, x1, z1, x2, z2, y, speed, t: phase, dir: 1 });
+    function addPhotoWalker(key, x1, z1, x2, z2, y, speed, height = 1.78, phase = 0, flipX = false) {
+      const ph = createPhotoHuman(key, height, M.contactAO, flipX);
+      ph.root.position.set(x1, y, z1);
+      g.add(ph.root);
+      animatedPeople.push({ type: 'photo_walk', root: ph.root, card: ph.card, x1, z1, x2, z2, y, speed, t: phase, dir: 1, phase: Math.random() * 6.28 });
     }
-    function addStatic(x, y, z, rotY, opts, idleType = 'stand') {
-      const rig = createHumanRig(opts, M.contactAO);
-      const seatDrop = opts.seated ? 0.38 * ((opts.height || 1.80) / 1.80) : 0;
-      rig.root.position.set(x, y - seatDrop, z);
-      rig.root.rotation.y = rotY;
-      g.add(rig.root);
-      animatedPeople.push({ type: idleType, rig, baseRotY: rotY, phase: Math.random() * 6.28 });
+    function addPhotoStatic(key, x, y, z, height = 1.78, flipX = false) {
+      const ph = createPhotoHuman(key, height, M.contactAO, flipX);
+      ph.root.position.set(x, y, z);
+      g.add(ph.root);
+      animatedPeople.push({ type: 'photo_static', root: ph.root, card: ph.card, y, phase: Math.random() * 6.28 });
     }
 
-    // 1. FAMILY #1 strolling along Covered Gallery (Father + Mother + Child!)
-    addWalker(-1.65, 17.0, -1.65, 44.0, Y_RDC, 0.92, { height: 1.80, shirt: 0x2c3a4a, style: 'jacket', pants: 0x262930, beard: true, glasses: true }, 0.15);
-    addWalker(-1.05, 17.2, -1.05, 44.2, Y_RDC, 0.92, { height: 1.66, gender: 'f', shirt: 0x876254, longCoat: true, hijab: 0xd9cfc0, pants: 0x2b2928, bag: 'tote' }, 0.15);
-    addWalker(-1.35, 17.8, -1.35, 44.8, Y_RDC, 0.92, { height: 1.12, shirt: 0xa67740, shortSleeve: true, pants: 0x2b3e52, bag: 'pack' }, 0.15);
+    // 1. REAL MOROCCAN FAMILIES strolling along Galerie Commerciale, Cour Palmiers & toward Mini Brahim / Oasis Café!
+    addPhotoWalker('family', -1.35, 17.5, -1.35, 44.5, Y_RDC, 0.86, 1.80, 0.16, false);
+    addPhotoWalker('family', -9.2,  52.0, -1.8,  52.0, Y_RDC, 0.78, 1.78, 0.45, true);
+    addPhotoWalker('family', -15.0, -21.5, -10.5, -19.2, Y_RDC, 0.80, 1.80, 0.22, false);
 
-    // 2. FAMILY #2 near Palm Courtyard & Angle 45m²!
-    addWalker(-9.5, 51.8, -1.5, 51.8, Y_RDC, 0.85, { height: 1.79, shirt: 0x455348, style: 'shirt', pants: 0x2a2b2e, beard: true }, 0.42);
-    addWalker(-9.5, 52.4, -1.5, 52.4, Y_RDC, 0.85, { height: 1.65, gender: 'f', shirt: 0x866154, longCoat: true, pants: 0x22262e, hair: 0x261a12, bag: 'tote' }, 0.42);
-    addWalker(-8.7, 52.1, -0.7, 52.1, Y_RDC, 0.85, { height: 1.24, gender: 'f', shirt: 0x4d6b80, pants: 0x32363e }, 0.42);
+    // 2. REAL SHOPPERS & BUSINESS PROFESSIONALS (RDC Gallery, Parking Walkway, Oasis Café Terrace, 1er Étage Coursive & Plateau!)
+    addPhotoWalker('woman_walk', -1.45, 39.0, -1.45, 8.0,  Y_RDC,   0.98, 1.68, 0.58, false);
+    addPhotoWalker('man_walk',   -10.6, 10.0, -10.6, 38.0, Y_RDC,   1.02, 1.80, 0.30, false);
+    addPhotoWalker('office',      1.25, 18.5,  1.25, 48.0, Y_ETAGE, 0.92, 1.80, 0.25, false);
+    addPhotoWalker('woman_walk', -1.35, 14.0, -1.35, 44.0, Y_ETAGE, 0.86, 1.69, 0.52, true);
 
-    // 3. FAMILY #3 walking toward Mini Brahim & Oasis Café!
-    addWalker(-14.5, -21.0, -10.2, -19.5, Y_RDC, 0.88, { height: 1.82, shirt: 0x34404e, style: 'jacket', pants: 0x3a3733, glasses: true }, 0.2);
-    addWalker(-14.5, -20.3, -10.2, -18.8, Y_RDC, 0.88, { height: 1.64, gender: 'f', shirt: 0x998068, longCoat: true, hijab: 0x475262, pants: 0x25282e }, 0.2);
-    addWalker(-13.8, -20.6, -9.5, -19.1, Y_RDC, 0.88, { height: 1.05, shirt: 0x9e584a, shortSleeve: true, pants: 0x2b3e50 }, 0.2);
+    // 3. REAL AFRIQUIA STATION ATTENDANTS (Full-body Orange Coveralls + Blue Collar + Blue Cap!)
+    addPhotoStatic('afriquia', -13.8, 0.0, -45.4, 1.79, false);
+    addPhotoStatic('afriquia',  -8.6, 0.0, -38.8, 1.78, true);
+    addPhotoStatic('afriquia', -11.6, 0.0, -48.6, 1.80, false);
 
-    // 4. Individual shoppers & professionals (staying cleanly in open aisles!)
-    addWalker(-1.4, 38.0, -1.4, 8.0, Y_RDC, 1.02, { height: 1.72, gender: 'f', shirt: 0x574a5c, pants: 0x23262c, bag: 'tote' }, 0.6);
-    addWalker(-10.5, 10.0, -10.5, 36.0, Y_RDC, 1.06, { height: 1.81, shirt: 0x545d68, style: 'jacket', pants: 0x1f2630, beard: true, bag: 'pack' }, 0.3);
-    addWalker(1.2, 18.5, 1.2, 48.0, Y_ETAGE, 0.94, { height: 1.77, shirt: 0x2e3b4a, style: 'jacket', pants: 0x1e242b }, 0.25);
-    addWalker(-1.3, 14.0, -1.3, 44.0, Y_ETAGE, 0.88, { height: 1.68, gender: 'f', shirt: 0x7d5d46, longCoat: true, pants: 0x25282e, bag: 'tote' }, 0.5);
+    // 4. REAL VISITORS AT OASIS CAFÉ TERRACE, MINI BRAHIM & 1ER ÉTAGE ADMIN!
+    addPhotoStatic('man_walk',   -9.3,  0.12, -26.5, 1.79, false);
+    addPhotoStatic('woman_walk', -9.2,  0.12, -24.4, 1.68, true);
+    addPhotoStatic('woman_walk', -9.4,  0.12, -17.6, 1.69, false);
+    addPhotoStatic('man_walk',   -5.2,  0.12, -19.2, 1.78, true);
+    addPhotoStatic('office',      2.2,  Y_ETAGE, 3.2, 1.79, false);
+    addPhotoStatic('man_walk',    4.6,  Y_ETAGE, 25.4, 1.78, true);
 
-    // 5. SEATED GUESTS squarely on stools at Oasis Café Outdoor Terrace & Inside Café!
-    addStatic(-11.45, 0.12, -27.2, Math.PI / 2,  { height: 1.76, shirt: 0x364857, style: 'jacket', seated: true, beard: true }, 'seated');
-    addStatic(-9.95,  0.12, -27.2, -Math.PI / 2, { height: 1.65, gender: 'f', shirt: 0x8f6250, hijab: 0xe3dcd0, seated: true }, 'seated');
-    addStatic(-11.45, 0.12, -21.0, Math.PI / 2,  { height: 1.80, shirt: 0x485444, style: 'shirt', seated: true }, 'seated');
-    addStatic(-9.95,  0.12, -21.0, -Math.PI / 2, { height: 1.15, shirt: 0xb5863a, shortSleeve: true, seated: true }, 'seated');
-    addStatic(-5.6,   0.12, -26.8, 0,            { height: 1.72, shirt: 0x594a3f, seated: true }, 'seated');
-    addStatic(-5.6,   0.12, -25.6, Math.PI,      { height: 1.68, gender: 'f', shirt: 0x374959, seated: true }, 'seated');
-
-    // 6. AFRIQUIA STATION ATTENDANTS IN FULL-BODY ORANGE COVERALLS + BLUE COLLAR + BLUE CAP!
-    addStatic(-13.8, 0.0, -45.4, 0.55,  { height: 1.78, shirt: 0xe85a16, style: 'afriquia', pants: 0xe85a16, pantsStyle: 'afriquia_pants', cap: 0x146cc8, beard: true }, 'work');
-    addStatic(-8.6,  0.0, -38.8, -0.75, { height: 1.76, shirt: 0xe85a16, style: 'afriquia', pants: 0xe85a16, pantsStyle: 'afriquia_pants', cap: 0x146cc8 }, 'work');
-    addStatic(-11.6, 0.0, -48.6, 0.20,  { height: 1.79, shirt: 0xe85a16, style: 'afriquia', pants: 0xe85a16, pantsStyle: 'afriquia_pants', cap: 0x146cc8, beard: true }, 'work');
-
-    // 7. Mini Brahim Staff, Mechanic, Dark Kitchen Chefs & Office Workers!
-    addStatic(-6.1, 0.12, -16.1, Math.PI, { height: 1.74, shirt: 0x16191f, style: 'minibrahim', pants: 0x1f2228 }, 'work');
-    addStatic(-6.4, 0.12, -9.6, Math.PI / 2, { height: 1.79, shirt: 0x1e3857, style: 'afriquia', pants: 0x1b2638, cap: 0x1c4a94 }, 'work');
-    addStatic(3.4, Y_SSOL, 2.2, Math.PI, { height: 1.77, shirt: 0xeeeff0, style: 'chef', pants: 0x262930, apron: true, cap: 0xf4f5f6 }, 'work');
-    addStatic(2.8, Y_SSOL, 11.4, 0.3,    { height: 1.72, gender: 'f', shirt: 0xeeeff0, style: 'chef', pants: 0x262930, apron: true, cap: 0xf4f5f6 }, 'work');
-    addStatic(4.2, Y_ETAGE, 21.5, 0,       { height: 1.76, shirt: 0x38495c, style: 'jacket', seated: true }, 'seated');
-    addStatic(4.4, Y_ETAGE, 28.0, 0,       { height: 1.68, gender: 'f', shirt: 0x775648, seated: true }, 'seated');
-    addStatic(2.1, Y_ETAGE, 2.8, Math.PI,  { height: 1.78, shirt: 0x2d3748, style: 'jacket', seated: true, beard: true }, 'seated');
+    // 5. REAL DARK KITCHEN CHEFS (Sous-sol 125 m²)
+    addPhotoStatic('chef', 3.4, Y_SSOL,  2.2, 1.78, false);
+    addPhotoStatic('chef', 2.9, Y_SSOL, 11.4, 1.76, true);
   }
 
   // =========================================================================
@@ -2138,21 +2223,20 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     gltfLoader.setDRACOLoader(draco);
 
     let doneCount = 0;
-    const totalSteps = 11;
+    const totalSteps = 12;
     const bumpProg = (label) => {
       doneCount++;
-      setProg(Math.min(100, Math.round(12 + (doneCount / totalSteps) * 88)), label);
+      setProg(Math.min(100, Math.round(10 + (doneCount / totalSteps) * 90)), label);
     };
 
     const finishLoader = () => {
       setProg(100, 'Environnement Ultra PBR prêt !');
       setTimeout(() => {
         const el = document.getElementById('loader');
-        if (el) { el.classList.add('done'); setTimeout(() => { el.style.display = 'none'; }, 420); }
-      }, 220);
+        if (el) { el.classList.add('done'); setTimeout(() => { el.style.display = 'none'; }, 380); }
+      }, 200);
     };
 
-    // 1. Load Primary Day 360° HDRI FIRST (then dismiss loader quickly so user can walk right away while remaining HDRIs/GLBs stream in!)
     const loadHDR = (key, path) => new Promise(resolve => {
       rgbeLoader.load(path, tex => {
         tex.mapping = THREE.EquirectangularReflectionMapping;
@@ -2168,33 +2252,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
     Promise.all([
       loadHDR('day', 'assets/hdr/day.hdr').then(() => bumpProg('Ciel HDRI 360° Soleil chargé…')),
-      loadGLTF('assets/models/ferrari.glb').then(g => {
-        bumpProg('Voitures 3D photoréalistes chargées…');
-        if (!g) return;
-        heavyModelTemplates.ferrari = g.scene;
-        // Upgrade parked cars + live moving traffic cars to real 3D GLB vehicles!
-        parkedCarEntries.forEach((e, idx) => {
-          if (e.modelType === 'ferrari') swapCarToGLB(e.car, g.scene, e.colorHex, e.isSUV, Math.PI);
-        });
-        const trafficCols = [0xe8eaed, 0x262b33, 0x1e3a5f, 0x7c2020, 0x4b5563, 0xc7bfb2];
-        animatedCars.forEach((ac, idx) => {
-          if (idx % 2 === 0) swapCarToGLB(ac.car, g.scene, trafficCols[idx % trafficCols.length], false, Math.PI);
-        });
-      }),
-      loadGLTF('assets/models/car_concept.glb').then(g => {
-        bumpProg('Berlines & SUV 3D chargés…');
-        if (!g) return;
-        heavyModelTemplates.car_concept = g.scene;
-        parkedCarEntries.forEach(e => {
-          if (e.modelType === 'car_concept') swapCarToGLB(e.car, g.scene, e.colorHex, e.isSUV, 0);
-        });
-        const trafficCols = [0x223855, 0xd8dce0, 0x374c47, 0x6e2b2b, 0x333c48];
-        animatedCars.forEach((ac, idx) => {
-          if (idx % 2 === 1) swapCarToGLB(ac.car, g.scene, trafficCols[idx % trafficCols.length], true, 0);
-        });
-      }),
       loadGLTF('assets/models/coffee_table_round_01/coffee_table_round_01_1k.gltf').then(g => {
-        bumpProg('Mobilier 3D Oasis Café chargé…');
+        bumpProg('Tables 3D Oasis Café chargées…');
         if (!g) return;
         for (let i = 0; i < 5; i++) {
           const tz = -27.2 + i * 3.1, tx = -10.7;
@@ -2216,7 +2275,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
         }
       }),
       loadGLTF('assets/models/hanging_industrial_lamp/hanging_industrial_lamp_1k.gltf').then(g => {
-        bumpProg('Luminaires suspendus 3D chargés…');
+        bumpProg('Luminaires 3D Oasis Café chargés…');
         if (!g) return;
         [-27.0, -25.2, -23.4].forEach(pz => {
           const lmp = normalizeAndFit(g.scene.clone(true), 0.68, 'height', 0);
@@ -2224,26 +2283,66 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
           groups.heavyProps.add(lmp);
         });
       }),
-      loadGLTF('assets/models/potted_plant_01/potted_plant_01_1k.gltf').then(g => {
-        bumpProg('Plantes 3D botaniques chargées…');
+      // REAL SCANNED POLY HAVEN 3D SHRUBS across NW Island, NE Island, Parking Median & Cour des Palmiers!
+      loadGLTF('assets/models/shrub_02/shrub_02_1k.gltf').then(g => {
+        bumpProg('Arbustes méditerranéens 3D (1/3)…');
         if (!g) return;
-        [[-8.7, 0.12, -28.6], [-8.7, 0.12, -22.2], [-8.7, 0.12, -15.6], [-0.8, 0.02, 5.0], [-0.8, 0.02, 16.0], [-0.8, 0.02, 50.5], [1.8, Y_ETAGE, 4.1], [-1.8, Y_ETAGE, 5.2]].forEach(([px, py, pz], idx) => {
+        [[-30.2, 0.25, -56.2, 1.05], [-26.2, 0.25, -60.5, 0.95], [8.0, 0.25, -56.2, 1.0], [11.8, 0.25, -59.5, 0.92],
+         [-22.7, 0.25, 10.5, 0.90], [-22.7, 0.25, 24.5, 0.95], [-22.7, 0.25, 38.5, 0.92], [-6.8, 0.34, 48.8, 1.05]].forEach(([px, py, pz, h], i) => {
+          const s = normalizeAndFit(g.scene.clone(true), h, 'height', i * 1.3);
+          s.position.set(px, py, pz);
+          groups.heavyProps.add(s);
+        });
+      }),
+      loadGLTF('assets/models/shrub_03/shrub_03_1k.gltf').then(g => {
+        bumpProg('Arbustes méditerranéens 3D (2/3)…');
+        if (!g) return;
+        [[-29.6, 0.25, -60.4, 0.95], [-25.8, 0.25, -56.2, 0.88], [7.6, 0.25, -60.8, 0.95], [12.2, 0.25, -56.4, 0.90],
+         [-22.7, 0.25, 17.5, 0.88], [-22.7, 0.25, 31.5, 0.92], [-22.7, 0.25, 45.5, 0.90], [-4.2, 0.34, 46.2, 0.95]].forEach(([px, py, pz, h], i) => {
+          const s = normalizeAndFit(g.scene.clone(true), h, 'height', i * 1.7);
+          s.position.set(px, py, pz);
+          groups.heavyProps.add(s);
+        });
+      }),
+      loadGLTF('assets/models/shrub_04/shrub_04_1k.gltf').then(g => {
+        bumpProg('Arbustes méditerranéens 3D (3/3)…');
+        if (!g) return;
+        [[-27.8, 0.25, -55.8, 0.85], [10.0, 0.25, -56.0, 0.88], [-22.7, 0.25, 5.5, 0.85], [-22.7, 0.25, 50.2, 0.85],
+         [-5.4, 0.34, 45.8, 0.92], [-7.2, 0.34, 47.0, 0.85]].forEach(([px, py, pz, h], i) => {
+          const s = normalizeAndFit(g.scene.clone(true), h, 'height', i * 2.1);
+          s.position.set(px, py, pz);
+          groups.heavyProps.add(s);
+        });
+      }),
+      loadGLTF('assets/models/potted_plant_01/potted_plant_01_1k.gltf').then(g => {
+        bumpProg('Plantes en pot 3D (1/2)…');
+        if (!g) return;
+        [[-8.7, 0.12, -28.6], [-8.7, 0.12, -22.2], [-8.7, 0.12, -15.6], [-0.8, 0.02, 5.0], [-0.8, 0.02, 16.0], [-0.8, 0.02, 50.5]].forEach(([px, py, pz], idx) => {
           const pl = normalizeAndFit(g.scene.clone(true), 1.15, 'height', idx * 1.1);
           pl.position.set(px, py, pz);
           groups.heavyProps.add(pl);
         });
       }),
-      loadGLTF('assets/models/plant_tropical.glb').then(g => {
-        bumpProg('Végétation tropicale Oasis Café chargée…');
+      loadGLTF('assets/models/potted_plant_02/potted_plant_02_1k.gltf').then(g => {
+        bumpProg('Plantes en pot 3D (2/2)…');
         if (!g) return;
-        [-28.2, -26.4, -24.6, -22.9].forEach((tz, idx) => {
+        [[1.8, Y_ETAGE, 4.1], [-1.8, Y_ETAGE, 5.2], [-1.8, Y_ETAGE, 18.0], [-1.8, Y_ETAGE, 38.0], [-0.8, 0.02, 32.0]].forEach(([px, py, pz], idx) => {
+          const pl = normalizeAndFit(g.scene.clone(true), 1.05, 'height', idx * 1.4);
+          pl.position.set(px, py, pz);
+          groups.heavyProps.add(pl);
+        });
+      }),
+      loadGLTF('assets/models/plant_tropical.glb').then(g => {
+        bumpProg('Jardinières tropicales Oasis Café…');
+        if (!g) return;
+        [-28.4, -26.8, -25.2, -23.6].forEach((tz, idx) => {
           const pl = normalizeAndFit(g.scene.clone(true), 0.92, 'height', idx * 1.4);
           pl.position.set(-12.25, 0.74, tz);
           groups.heavyProps.add(pl);
         });
       }),
       loadGLTF('assets/models/fridge.glb').then(g => {
-        bumpProg('Frigos vitrés Mini Brahim chargés…');
+        bumpProg('Frigos vitrés Mini Brahim…');
         if (!g) return;
         [-20.4, -18.9, -17.4].forEach(fz => {
           const fr = normalizeAndFit(g.scene.clone(true), 2.10, 'height', -Math.PI / 2);
@@ -2252,15 +2351,13 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
         });
       }),
       loadGLTF('assets/models/metal_office_desk/metal_office_desk_1k.gltf').then(g => {
-        bumpProg('Bureaux 3D 1er Étage chargés…');
+        bumpProg('Bureaux 3D 1er Étage…');
         if (!g) return;
-        // Admin 32m² desks (looking North toward Afriquia Station!)
         [[2.0, 1.95, 0], [6.1, 1.95, 0]].forEach(([dx, dz, rot]) => {
           const d = normalizeAndFit(g.scene.clone(true), 0.78, 'height', rot);
           d.position.set(dx, Y_ETAGE, dz);
           groups.etage.add(d);
         });
-        // Plateau 447m² open-space desks
         [22.5, 29.0, 35.5].forEach(dz => {
           [3.4, 5.2].forEach(dx => {
             const d = normalizeAndFit(g.scene.clone(true), 0.76, 'height', Math.PI);
@@ -2268,29 +2365,9 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
             groups.etage.add(d);
           });
         });
-      }),
-      loadGLTF('assets/models/cesium_man.glb').then(g => {
-        bumpProg('Personnages 3D animés chargés…');
-        if (!g || !g.animations || !g.animations.length) return;
-        // Upgrade 4 open-aisle walking shoppers to real skeletal-animated 3D GLB walkers!
-        [9, 10, 11, 12].forEach((pIdx, k) => {
-          const p = animatedPeople[pIdx];
-          if (!p || p.type !== 'walk') return;
-          const clone = SkeletonUtils.clone(g.scene);
-          const fit = normalizeAndFit(clone, 1.76, 'height', 0);
-          p.rig.root.visible = false;
-          groups.people.add(fit);
-          const mixer = new THREE.AnimationMixer(clone);
-          const act = mixer.clipAction(g.animations[0]);
-          act.timeScale = 0.85 + k * 0.08;
-          act.play();
-          gltfMixers.push(mixer);
-          p.gltfRoot = fit;
-        });
       })
     ]).then(() => {
       finishLoader();
-      // Background preload Golden & Evening 360° HDRIs for instant switching!
       loadHDR('golden', 'assets/hdr/golden.hdr');
       loadHDR('evening', 'assets/hdr/evening.hdr');
     });
@@ -2588,28 +2665,31 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     g.add(totemGrp);
     colliders.push({ minX: 9.4 - 1.25, maxX: 9.4 + 1.25, minZ: -60.2 - 0.35, maxZ: -60.2 + 0.35, floor: 'rdc' });
 
-    // --- REALISTIC PARKED CARS (Natural Metallic Real-World Palette, Solid Collisions!) ---
-    const realCarColors = [0xe8eaed, 0x262b33, 0x4b5563, 0x1e334d, 0x6b2727, 0x9ca3af, 0x3b4844, 0xc7bfb2];
+    // --- NORMAL EVERYDAY MOROCCAN PARKED VEHICLES (Family Hatchbacks, Sedans, SUVs & White Delivery Camionnettes!) ---
     [
       // NE Parking next to the NE planted island!
-      [10.8, -50.9, -Math.PI/2], [10.8, -44.7, -Math.PI/2],
+      [10.8, -50.9, -Math.PI/2, 'hatch', 0xe8eaed],
+      [10.8, -44.7, -Math.PI/2, 'van',   0xf2f4f7],
       // NW Station parking
-      [-27.8, -48.8, Math.PI/2], [-27.8, -43.1, Math.PI/2],
-      // Parking Clients 35 places
-      [-5.3, 4.3, Math.PI/2], [-5.3, 12.0, Math.PI/2], [-5.3, 19.6, Math.PI/2],
-      [-5.3, 29.8, Math.PI/2], [-5.3, 37.5, Math.PI/2],
-      [-18.3, 7.8, -Math.PI/2], [-18.3, 15.5, -Math.PI/2], [-18.3, 25.7, -Math.PI/2],
-      [-18.3, 38.4, -Math.PI/2], [-18.3, 46.1, -Math.PI/2]
-    ].forEach(([cx, cz, rot], i) => {
-      const colHex = realCarColors[i % realCarColors.length];
-      const isSUV = i % 4 === 0;
-      const car = createRealisticVehicle(colHex, isSUV, M.contactAO);
+      [-27.8, -48.8, Math.PI/2, 'suv',   0x384350],
+      [-27.8, -43.1, Math.PI/2, 'sedan', 0xb8bec6],
+      // Parking Clients 35 places (Everyday realistic mix!)
+      [-5.3,  4.3,  Math.PI/2, 'suv',   0xdbe0e5],
+      [-5.3, 12.0,  Math.PI/2, 'hatch', 0x26384d],
+      [-5.3, 19.6,  Math.PI/2, 'sedan', 0x525a64],
+      [-5.3, 29.8,  Math.PI/2, 'van',   0xf4f5f7],
+      [-5.3, 37.5,  Math.PI/2, 'hatch', 0x7c2d2d],
+      [-18.3, 7.8, -Math.PI/2, 'sedan', 0xe5e7eb],
+      [-18.3, 15.5,-Math.PI/2, 'suv',   0x2e353d],
+      [-18.3, 25.7,-Math.PI/2, 'hatch', 0xc9c1b4],
+      [-18.3, 38.4,-Math.PI/2, 'van',   0xe2e6ea],
+      [-18.3, 46.1,-Math.PI/2, 'suv',   0x3d4d48]
+    ].forEach(([cx, cz, rot, vType, colHex]) => {
+      const car = createRealisticVehicle(colHex, vType, M.contactAO);
       car.grp.position.set(cx, 0, cz); car.grp.rotation.y = rot;
       g.add(car.grp);
-      parkedCarEntries.push({ car, colorHex: colHex, isSUV, modelType: i % 2 === 0 ? 'ferrari' : 'car_concept' });
-      // Solid collider around each parked vehicle (oriented along X when rot ≈ ±PI/2!)
-      const hx = Math.abs(Math.sin(rot)) > 0.5 ? 2.25 : 0.95;
-      const hz = Math.abs(Math.sin(rot)) > 0.5 ? 0.95 : 2.25;
+      const hx = Math.abs(Math.sin(rot)) > 0.5 ? 2.35 : 0.98;
+      const hz = Math.abs(Math.sin(rot)) > 0.5 ? 0.98 : 2.35;
       colliders.push({ minX: cx - hx, maxX: cx + hx, minZ: cz - hz, maxZ: cz + hz, floor: 'rdc' });
     });
 
@@ -2632,12 +2712,12 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     const stationCurve = new THREE.CatmullRomCurve3(stationLoopPts, false, 'centripetal', 0.45);
     const stationLen = stationCurve.getLength();
     [
-      { col: 0xd9dde2, isSUV: true,  t: 0.24, speed: 6.2 },
-      { col: 0x263952, isSUV: false, t: 0.72, speed: 6.6 }
+      { col: 0xe6e9ed, vType: 'suv',   t: 0.24, speed: 6.2 },
+      { col: 0xf4f6f8, vType: 'van',   t: 0.72, speed: 6.0 }
     ].forEach(cfg => {
-      const car = createRealisticVehicle(cfg.col, cfg.isSUV, M.contactAO);
+      const car = createRealisticVehicle(cfg.col, cfg.vType, M.contactAO);
       g.add(car.grp);
-      animatedCars.push({ type: 'curve', car, curve: stationCurve, len: stationLen, t: cfg.t, baseSpeed: cfg.speed, curSpeed: cfg.speed, wheelR: cfg.isSUV ? 0.39 : 0.33, roadMode: 'all', politeBrake: true });
+      animatedCars.push({ type: 'curve', car, curve: stationCurve, len: stationLen, t: cfg.t, baseSpeed: cfg.speed, curSpeed: cfg.speed, wheelR: cfg.vType === 'suv' ? 0.38 : 0.36, roadMode: 'all', politeBrake: true });
     });
 
     // High-level Aerial Labels
@@ -2687,16 +2767,16 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
     // Live Moving Traffic on Route P3014 (Actuel 30 m: Eastbound Z=-74.5 & Westbound Z=-81.5!)
     [
-      { x: -130, z: -74.5, dir: 1,  speed: 11.5, col: 0xdce0e5, isSUV: false },
-      { x: 25,   z: -74.5, dir: 1,  speed: 10.2, col: 0x4b5563, isSUV: true  },
-      { x: 110,  z: -81.5, dir: -1, speed: 12.0, col: 0x283548, isSUV: true  },
-      { x: -45,  z: -81.5, dir: -1, speed: 10.8, col: 0x7a2c2c, isSUV: false }
+      { x: -130, z: -74.5, dir: 1,  speed: 11.2, col: 0xe6e9ed, vType: 'hatch' },
+      { x: 25,   z: -74.5, dir: 1,  speed: 9.8,  col: 0xf4f5f7, vType: 'van'   },
+      { x: 110,  z: -81.5, dir: -1, speed: 11.8, col: 0x2c3a4c, vType: 'suv'   },
+      { x: -45,  z: -81.5, dir: -1, speed: 10.6, col: 0x7a2e2e, vType: 'sedan' }
     ].forEach(c => {
-      const car = createRealisticVehicle(c.col, c.isSUV, M.contactAO);
+      const car = createRealisticVehicle(c.col, c.vType, M.contactAO);
       car.grp.position.set(c.x, 0, c.z);
       car.grp.rotation.y = c.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
       g.add(car.grp);
-      animatedCars.push({ type: 'linear', axis: 'X', min: -195, max: 195, pos: c.x, fixed: c.z, dir: c.dir, speed: c.speed, car, wheelR: c.isSUV ? 0.39 : 0.33, roadMode: 'actuel' });
+      animatedCars.push({ type: 'linear', axis: 'X', min: -195, max: 195, pos: c.x, fixed: c.z, dir: c.dir, speed: c.speed, car, wheelR: 0.35, roadMode: 'actuel' });
     });
 
     const sMat = makeRoadSign('ROUTE P3014 (30 m)', '← Moulay Thami   ·   Casablanca →', '#16356b');
@@ -2787,16 +2867,16 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
     // Live Moving Traffic on Future P3014 (60 m) & Nouvelle Route OA65 (30 m)!
     [
-      { axis: 'X', pos: -120, fixed: -74.5,  dir: 1,  speed: 12.2, min: -210, max: 210, col: 0xe8eaed, isSUV: true  },
-      { axis: 'X', pos: 30,   fixed: -82.0,  dir: 1,  speed: 13.8, min: -210, max: 210, col: 0x333c48, isSUV: false },
-      { axis: 'X', pos: -80,  fixed: -104.5, dir: -1, speed: 12.8, min: -210, max: 210, col: 0x243b55, isSUV: false },
-      { axis: 'X', pos: 95,   fixed: -112.0, dir: -1, speed: 11.4, min: -210, max: 210, col: 0x6e2b2b, isSUV: true  },
-      { axis: 'Z', pos: 18,   fixed: -40.2,  dir: -1, speed: 10.5, min: -210, max: 210, col: 0x374c47, isSUV: true  },
-      { axis: 'Z', pos: -135, fixed: -40.2,  dir: -1, speed: 11.2, min: -210, max: 210, col: 0xc8c0b4, isSUV: false },
-      { axis: 'Z', pos: -14,  fixed: -53.8,  dir: 1,  speed: 10.8, min: -210, max: 210, col: 0xd8dce0, isSUV: false },
-      { axis: 'Z', pos: 105,  fixed: -53.8,  dir: 1,  speed: 11.6, min: -210, max: 210, col: 0x4b5563, isSUV: true  }
+      { axis: 'X', pos: -120, fixed: -74.5,  dir: 1,  speed: 11.6, min: -210, max: 210, col: 0xe8eaed, vType: 'suv'   },
+      { axis: 'X', pos: 30,   fixed: -82.0,  dir: 1,  speed: 12.4, min: -210, max: 210, col: 0x38424f, vType: 'hatch' },
+      { axis: 'X', pos: -80,  fixed: -104.5, dir: -1, speed: 10.8, min: -210, max: 210, col: 0xf4f5f7, vType: 'van'   },
+      { axis: 'X', pos: 95,   fixed: -112.0, dir: -1, speed: 11.4, min: -210, max: 210, col: 0x6e2b2b, vType: 'sedan' },
+      { axis: 'Z', pos: 18,   fixed: -40.2,  dir: -1, speed: 10.5, min: -210, max: 210, col: 0x374c47, vType: 'suv'   },
+      { axis: 'Z', pos: -135, fixed: -40.2,  dir: -1, speed: 10.2, min: -210, max: 210, col: 0xf2f4f7, vType: 'van'   },
+      { axis: 'Z', pos: -14,  fixed: -53.8,  dir: 1,  speed: 10.8, min: -210, max: 210, col: 0xd8dce0, vType: 'hatch' },
+      { axis: 'Z', pos: 105,  fixed: -53.8,  dir: 1,  speed: 11.4, min: -210, max: 210, col: 0x4b5563, vType: 'sedan' }
     ].forEach(c => {
-      const car = createRealisticVehicle(c.col, c.isSUV, M.contactAO);
+      const car = createRealisticVehicle(c.col, c.vType, M.contactAO);
       if (c.axis === 'X') {
         car.grp.position.set(c.pos, 0, c.fixed);
         car.grp.rotation.y = c.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
@@ -3026,16 +3106,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     const oaW = new THREE.Mesh(new THREE.PlaneGeometry(7.0, 0.88), oasisMat); oaW.position.set(sx1 - 1.85, sH + 0.68, -25.6); oaW.rotation.y = -Math.PI / 2; g.add(oaW);
     const oaN = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 0.88), oasisMat); oaN.position.set(-5.6, sH + 0.68, sz1 - 1.25); oaN.rotation.y = Math.PI; g.add(oaN);
 
-    // Lush low botanical shrubs (trunkless!) lining the Oasis Café terrace planter + glowing exterior Edison bulbs!
-    const bushCard = new THREE.PlaneGeometry(1.15, 0.95);
-    [-28.4, -27.2, -26.0, -24.8, -23.6].forEach((tz, idx) => {
-      [0, Math.PI / 3, (2 * Math.PI) / 3].forEach(rot => {
-        const b = new THREE.Mesh(bushCard, M.treeLeafMat);
-        b.position.set(-12.25, 1.10, tz);
-        b.rotation.y = rot + idx * 0.5;
-        g.add(b);
-      });
-    });
+    // Real 3D plant_tropical.glb shrubs loaded in groups.heavyProps along the Oasis Café planter!
     // Warm amber glow bulbs inside the real 3D Poly Haven hanging_industrial_lamp fixtures!
     [-27.0, -25.2, -23.4].forEach(pz => {
       const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffd27d }));
@@ -3050,14 +3121,9 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     const srvMesh = new THREE.Mesh(new THREE.PlaneGeometry(6.0, 0.72), srvMat);
     srvMesh.position.set(sx1 - 0.14, sH - 0.34, -9.55); srvMesh.rotation.y = -Math.PI / 2; g.add(srvMesh);
 
-    const c1 = createRealisticVehicle(0x223855, true, M.contactAO); c1.grp.position.set(-11.8, 0, -43.5); c1.grp.rotation.y = Math.PI / 2; g.add(c1.grp);
-    const c2 = createRealisticVehicle(0xe9ecee, false, M.contactAO); c2.grp.position.set(-11.2, 0, -37.2); c2.grp.rotation.y = Math.PI / 2; g.add(c2.grp);
-    const c3 = createRealisticVehicle(0x7c2d2d, false, M.contactAO); c3.grp.position.set(-4.9, 0.68, -9.6); c3.grp.rotation.y = Math.PI / 2; g.add(c3.grp);
-    parkedCarEntries.push(
-      { car: c1, colorHex: 0x1d3557, isSUV: true,  modelType: 'car_concept' },
-      { car: c2, colorHex: 0xe9ecee, isSUV: false, modelType: 'ferrari' },
-      { car: c3, colorHex: 0x8b1e24, isSUV: false, modelType: 'ferrari' }
-    );
+    const c1 = createRealisticVehicle(0x283a52, 'suv',   M.contactAO); c1.grp.position.set(-11.8, 0, -43.5); c1.grp.rotation.y = Math.PI / 2; g.add(c1.grp);
+    const c2 = createRealisticVehicle(0xf3f5f7, 'van',   M.contactAO); c2.grp.position.set(-11.2, 0, -37.2); c2.grp.rotation.y = Math.PI / 2; g.add(c2.grp);
+    const c3 = createRealisticVehicle(0x6b2828, 'hatch', M.contactAO); c3.grp.position.set(-4.9, 0.68, -9.6); c3.grp.rotation.y = Math.PI / 2; g.add(c3.grp);
     colliders.push(
       { minX: -14.1, maxX: -9.5, minZ: -44.5, maxZ: -42.5, floor: 'rdc' },
       { minX: -13.4, maxX: -9.0, minZ: -38.1, maxZ: -36.3, floor: 'rdc' }
@@ -3908,47 +3974,22 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
   // ANIMATE LIVING HUMANS & LIVE TRAFFIC CARS
   // =========================================================================
   function updatePeople(dt, elapsed) {
+    const camX = camera.position.x, camZ = camera.position.z;
     for (let i = 0; i < animatedPeople.length; i++) {
       const p = animatedPeople[i];
-      if (p.type === 'walk') {
+      if (p.type === 'photo_walk') {
         const dist = Math.hypot(p.x2 - p.x1, p.z2 - p.z1) || 1;
         p.t += (p.speed / dist) * dt * p.dir;
         if (p.t >= 1) { p.t = 1; p.dir = -1; }
         else if (p.t <= 0) { p.t = 0; p.dir = 1; }
         const cx = p.x1 + (p.x2 - p.x1) * p.t;
         const cz = p.z1 + (p.z2 - p.z1) * p.t;
-        const gait = elapsed * (4.6 + p.speed * 0.8) + i * 1.3;
-        const swing = Math.sin(gait) * 0.40;
-        const bob = Math.abs(Math.sin(gait)) * 0.024;
-        const dx = (p.x2 - p.x1) * p.dir, dz = (p.z2 - p.z1) * p.dir;
-        const yaw = Math.atan2(dx, dz);
-        if (p.gltfRoot) {
-          p.gltfRoot.position.set(cx, p.y, cz);
-          p.gltfRoot.rotation.y = yaw;
-          continue;
-        }
-        p.rig.root.position.set(cx, p.y + bob, cz);
-        p.rig.root.rotation.y = yaw;
-        // Natural human knee flexion & opposite arm swing
-        p.rig.legL.rotation.x = swing;
-        p.rig.legR.rotation.x = -swing;
-        p.rig.legL.userData.knee.rotation.x = Math.max(0.04, -Math.sin(gait - 0.35) * 0.56);
-        p.rig.legR.userData.knee.rotation.x = Math.max(0.04,  Math.sin(gait - 0.35) * 0.56);
-        p.rig.armL.rotation.x = -swing * 0.58;
-        p.rig.armR.rotation.x =  swing * 0.58;
-        p.rig.armL.userData.elbow.rotation.x = -0.16 - Math.max(0,  swing * 0.35);
-        p.rig.armR.userData.elbow.rotation.x = -0.16 - Math.max(0, -swing * 0.35);
-        if (p.rig.bodyGrp) p.rig.bodyGrp.rotation.y = -swing * 0.14;
-      } else if (p.type === 'work') {
-        const w = Math.sin(elapsed * 2.0 + p.phase) * 0.14;
-        p.rig.armR.rotation.x = -0.32 + w;
-        p.rig.armL.rotation.x = -0.22 - w * 0.55;
-        if (p.rig.headGrp) p.rig.headGrp.rotation.y = Math.sin(elapsed * 0.7 + p.phase) * 0.22;
-      } else if (p.type === 'seated') {
-        if (p.rig.headGrp) {
-          p.rig.headGrp.rotation.y = Math.sin(elapsed * 0.55 + p.phase) * 0.18;
-          p.rig.headGrp.rotation.x = Math.sin(elapsed * 0.9 + p.phase) * 0.04;
-        }
+        const bob = Math.abs(Math.sin(elapsed * 5.2 + i * 1.4)) * 0.026;
+        p.root.position.set(cx, p.y + bob, cz);
+        // Smooth cylindrical Y-axis billboarding (faces viewer upright like Lumion/V-Ray ArchViz people!)
+        p.card.rotation.y = Math.atan2(camX - cx, camZ - cz);
+      } else if (p.type === 'photo_static') {
+        p.card.rotation.y = Math.atan2(camX - p.root.position.x, camZ - p.root.position.z);
       }
     }
   }
