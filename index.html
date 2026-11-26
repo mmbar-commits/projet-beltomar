@@ -875,24 +875,24 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
       balconyTile:  new THREE.MeshStandardMaterial({ map: T.balconyTile, roughness: 0.45, metalness: 0.10 }),
       terrazzo:     new THREE.MeshStandardMaterial({ map: T.terrazzo, roughness: 0.24, metalness: 0.12 }),
       kitchenTile:  new THREE.MeshStandardMaterial({ map: T.kitchenTile, roughness: 0.34, metalness: 0.06 }),
-      basementFloor:new THREE.MeshStandardMaterial({ map: T.concrete, color: 0xc9c5bc, roughness: 0.64 }),
-      woodSlat:     new THREE.MeshStandardMaterial({ map: T.woodSlat, roughness: 0.62 }),
-      grass:        new THREE.MeshStandardMaterial({ map: T.grass, roughness: 0.94 }),
-      carpet:       new THREE.MeshStandardMaterial({ map: T.carpet, roughness: 0.92 }),
+      basementFloor:new THREE.MeshStandardMaterial({ map: T.concrete, color: 0xe3e0d8, roughness: 0.58 }),
+      woodSlat:     new THREE.MeshStandardMaterial({ map: T.woodSlat, color: 0xf7eee3, roughness: 0.56 }),
+      grass:        new THREE.MeshStandardMaterial({ map: T.grass, roughness: 0.90 }),
+      carpet:       new THREE.MeshStandardMaterial({ map: T.carpet, roughness: 0.90 }),
       contactAO:    new THREE.MeshBasicMaterial({ map: T.contactAO, transparent: true, depthWrite: false }),
 
-      wallExt:      new THREE.MeshStandardMaterial({ map: T.stucco, bumpMap: T.stuccoBump, bumpScale: 0.02, roughness: 0.84 }),
-      wallConcrete: new THREE.MeshStandardMaterial({ map: T.concrete, bumpMap: T.stuccoBump, bumpScale: 0.018, roughness: 0.80 }),
-      wallWarm:     new THREE.MeshStandardMaterial({ color: 0xddd1bf, roughness: 0.82 }),
-      wallInt:      new THREE.MeshStandardMaterial({ color: 0xefede8, roughness: 0.86 }),
-      wallBasement: new THREE.MeshStandardMaterial({ color: 0xd0cdc5, roughness: 0.86 }),
-      wallGreen:    new THREE.MeshStandardMaterial({ color: 0xccdcd2, roughness: 0.74 }),
-      wallRoof:     new THREE.MeshStandardMaterial({ color: 0xb6bcc2, roughness: 0.88 }),
-      anthracite:   new THREE.MeshStandardMaterial({ color: 0x1e232a, roughness: 0.36, metalness: 0.62 }),
-      alucobond:    new THREE.MeshStandardMaterial({ color: 0xb9bec4, roughness: 0.28, metalness: 0.58 }),
-      aluminum:     new THREE.MeshStandardMaterial({ color: 0xa2abb5, roughness: 0.26, metalness: 0.78 }),
-      curb:         new THREE.MeshStandardMaterial({ color: 0xc8cacd, roughness: 0.86 }),
-      fence:        new THREE.MeshStandardMaterial({ map: T.stucco, color: 0xdfd8cb, roughness: 0.88 }),
+      wallExt:      new THREE.MeshStandardMaterial({ map: T.stucco, color: 0xffffff, bumpMap: T.stuccoBump, bumpScale: 0.015, roughness: 0.78 }),
+      wallConcrete: new THREE.MeshStandardMaterial({ map: T.concrete, color: 0xefede8, bumpMap: T.stuccoBump, bumpScale: 0.014, roughness: 0.76 }),
+      wallWarm:     new THREE.MeshStandardMaterial({ color: 0xf0e7d8, roughness: 0.78 }),
+      wallInt:      new THREE.MeshStandardMaterial({ color: 0xfaf9f6, roughness: 0.80 }),
+      wallBasement: new THREE.MeshStandardMaterial({ color: 0xebe9e3, roughness: 0.80 }),
+      wallGreen:    new THREE.MeshStandardMaterial({ color: 0xe2f0e8, roughness: 0.72 }),
+      wallRoof:     new THREE.MeshStandardMaterial({ color: 0xdce1e7, roughness: 0.82 }),
+      anthracite:   new THREE.MeshStandardMaterial({ color: 0x262c35, roughness: 0.36, metalness: 0.58 }),
+      alucobond:    new THREE.MeshStandardMaterial({ color: 0xd4d9df, roughness: 0.26, metalness: 0.52 }),
+      aluminum:     new THREE.MeshStandardMaterial({ color: 0xc2cbd4, roughness: 0.24, metalness: 0.72 }),
+      curb:         new THREE.MeshStandardMaterial({ color: 0xdadce0, roughness: 0.82 }),
+      fence:        new THREE.MeshStandardMaterial({ map: T.stucco, color: 0xf6f1e8, roughness: 0.82 }),
       steel:        new THREE.MeshStandardMaterial({ color: 0x3b4451, roughness: 0.34, metalness: 0.78 }),
       inox:         new THREE.MeshStandardMaterial({ color: 0xe2e7ed, roughness: 0.16, metalness: 0.92 }),
       woodWarm:     new THREE.MeshStandardMaterial({ color: 0x85532c, roughness: 0.64 }),
@@ -946,19 +946,11 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
       mat.needsUpdate = true;
     }
 
-    // BRAND-NEW Clean Asphalt, Smooth Architectural Concrete & Crisp White Plaster (Brand-New Project Look!)
-    applyPBR(M.asphalt,       'asphalt_new',  1, 1, 0x4b5058, 0.82, 0.06, 0.45);
-    applyPBR(M.forecourt,     'concrete_new', 1, 1, 0xf2eee6, 0.74, 0.04, 0.32);
-    applyPBR(M.pavers,        'pavers',       1, 1, 0xf2eee7, 0.82, 0.04, 0.68);
-    applyPBR(M.wallExt,       'plaster_new',  1, 1, 0xfcfaf6, 0.82, 0.02, 0.28);
-    applyPBR(M.fence,         'plaster_new',  1, 1, 0xf3eee6, 0.85, 0.02, 0.34);
-    applyPBR(M.wallConcrete,  'concrete_new', 1, 1, 0xe2dfd8, 0.80, 0.03, 0.38);
-    applyPBR(M.woodSlat,      'wood',     1, 1, 0xc79563, 0.74, 0.03, 0.85);
-    applyPBR(M.woodWarm,      'wood',     1, 1, 0xa86f42, 0.68, 0.03, 0.70);
-    applyPBR(M.woodLight,     'wood',     1, 1, 0xd6b084, 0.66, 0.02, 0.60);
-    applyPBR(M.terrazzo,      'terrazzo', 1, 1, 0xf6f2ea, 0.34, 0.06, 0.35);
-    applyPBR(M.balconyTile,   'terrazzo', 1, 1, 0xe5e0d6, 0.48, 0.05, 0.42);
-    applyPBR(M.grass,         'grass',    1, 1, 0xa6be85, 0.96, 0.01, 0.90);
+    // Keep the exact beloved original ground textures (clean Station enrobé/forecourt + crisp Commercial tarmac + bright pavers/terrazzo/stucco!)
+    // Apply scanned PBR selectively on grass & warm timber furniture without ever darkening floors, walls or ceilings!
+    applyPBR(M.woodWarm,      'wood',     1, 1, 0xc9915d, 0.66, 0.03, 0.55);
+    applyPBR(M.woodLight,     'wood',     1, 1, 0xe8c9a0, 0.64, 0.02, 0.45);
+    applyPBR(M.grass,         'grass',    1, 1, 0xc4db9e, 0.92, 0.01, 0.75);
 
     // Physical Reflective Architectural Glass with Real 360° HDRI Sky Reflections!
     M.glass = new THREE.MeshPhysicalMaterial({
@@ -2716,11 +2708,12 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     scene.environment = envRT.texture;
     clock = new THREE.Clock();
 
-    // Cinematic Film Lighting Rig (Warm Moroccan Afternoon Sun casting sculptural shadows!)
-    hemiLight = new THREE.HemisphereLight(0xcfe4ff, 0x8e7c66, 0.62);
+    // Bright, Airy Architectural Lighting Rig (Zero Dark Walls or Gloomy Ceilings!)
+    hemiLight = new THREE.HemisphereLight(0xf0f7ff, 0xeee8df, 1.15);
     scene.add(hemiLight);
+    scene.add(new THREE.AmbientLight(0xfffcf5, 0.45));
 
-    sunLight = new THREE.DirectionalLight(0xfff1d8, 2.75);
+    sunLight = new THREE.DirectionalLight(0xfff5e2, 2.35);
     sunLight.position.set(-72, 54, -26);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(4096, 4096);
@@ -2734,20 +2727,20 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
     sunLight.shadow.normalBias = 0.035;
     scene.add(sunLight);
 
-    // Post-Processing Pipeline: Ground-Truth Ambient Occlusion (GTAO) + Subtle Cinematic Bloom + ACES Output!
+    // Post-Processing Pipeline: Delicate Contact GTAO (Never Darkens Ceilings!) + Subtle Bloom + ACES Output!
     composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
     gtaoPass = new GTAOPass(scene, camera, window.innerWidth, window.innerHeight);
     gtaoPass.output = GTAOPass.OUTPUT.Default;
-    gtaoPass.blendIntensity = 0.48;
-    gtaoPass.updateGtaoMaterial({ radius: 0.40, distanceExponent: 1.5, thickness: 1.0, scale: 1.0, samples: 8 });
+    gtaoPass.blendIntensity = 0.18;
+    gtaoPass.updateGtaoMaterial({ radius: 0.34, distanceExponent: 1.6, thickness: 0.8, scale: 1.0, samples: 8 });
     composer.addPass(gtaoPass);
-    bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.14, 0.32, 0.94);
+    bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.10, 0.28, 0.95);
     composer.addPass(bloomPass);
     composer.addPass(new OutputPass());
 
-    fillLight = new THREE.DirectionalLight(0xdbeafe, 0.34);
-    fillLight.position.set(50, 28, 55);
+    fillLight = new THREE.DirectionalLight(0xf5f9ff, 0.78);
+    fillLight.position.set(50, 32, 55);
     scene.add(fillLight);
 
     nightCanopyLight = new THREE.PointLight(0xe8f4ff, 0.0, 40, 1.3);
@@ -4065,9 +4058,9 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
   };
 
   const TIME_MODES = [
-    { label: '☀️ Soleil', hdrKey: 'day',     fog: 0x9ec8f2, fogDens: 0.00065, sunCol: 0xfff6e3, sunInt: 3.15, sunPos: [-68, 62, -24], hemi: 0.50, fill: 0.38, envInt: 1.05, bgInt: 1.15, night: 0.0,   exp: 1.04 },
-    { label: '🌅 Doré',   hdrKey: 'golden',  fog: 0xe8b98a, fogDens: 0.00120, sunCol: 0xffa652, sunInt: 2.95, sunPos: [-92, 22, 26],  hemi: 0.36, fill: 0.24, envInt: 0.92, bgInt: 1.05, night: 42.0,  exp: 0.98 },
-    { label: '🌙 Soir',   hdrKey: 'evening', fog: 0x0e182c, fogDens: 0.00220, sunCol: 0x8bb6f8, sunInt: 0.48, sunPos: [45, 55, -25],  hemi: 0.24, fill: 0.16, envInt: 0.48, bgInt: 0.85, night: 165.0, exp: 1.06 }
+    { label: '☀️ Soleil', hdrKey: 'day',     fog: 0xbfe0fa, fogDens: 0.00055, sunCol: 0xfff7e6, sunInt: 2.35, sunPos: [-68, 62, -24], hemi: 1.18, fill: 0.80, envInt: 1.05, bgInt: 1.12, night: 0.0,   exp: 1.08 },
+    { label: '🌅 Doré',   hdrKey: 'golden',  fog: 0xebd0b0, fogDens: 0.00100, sunCol: 0xffb366, sunInt: 2.45, sunPos: [-92, 22, 26],  hemi: 0.88, fill: 0.56, envInt: 0.92, bgInt: 1.05, night: 42.0,  exp: 1.04 },
+    { label: '🌙 Soir',   hdrKey: 'evening', fog: 0x16243d, fogDens: 0.00180, sunCol: 0x9ac2ff, sunInt: 0.65, sunPos: [45, 55, -25],  hemi: 0.48, fill: 0.35, envInt: 0.55, bgInt: 0.85, night: 165.0, exp: 1.08 }
   ];
 
   function applyTimeOfDay(idx) {
