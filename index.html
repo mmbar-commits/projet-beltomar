@@ -389,9 +389,12 @@
   <div class="mm-style-bar">
     <button class="mm-style-btn active" id="mm-style-schema" onclick="setMinimapStyle('schema')">🗺️ Plan 2D</button>
     <button class="mm-style-btn" id="mm-style-arch" onclick="setMinimapStyle('arch')">📐 Architecte</button>
+    <button class="mm-style-btn" style="flex:0 0 24px;padding:3px 0;" onclick="zoomMinimap(-1)" title="Dézoomer le plan 2D">−</button>
+    <button class="mm-style-btn" id="mm-zoom-val" style="flex:0 0 34px;padding:3px 0;" onclick="resetMinimapZoom()" title="Réinitialiser le zoom (1×)">1×</button>
+    <button class="mm-style-btn" style="flex:0 0 24px;padding:3px 0;" onclick="zoomMinimap(1)" title="Zoomer sur le plan 2D">+</button>
   </div>
   <canvas id="minimap-canvas" width="352" height="672"></canvas>
-  <div class="mm-hint">Cliquez sur le plan pour vous téléporter</div>
+  <div class="mm-hint">Clic : téléporter · Molette / +− : zoomer · Glisser : déplacer</div>
 </div>
 
 <div id="help-modal" onclick="if(event.target===this) toggleHelp()">
@@ -4801,6 +4804,8 @@
   const archImgsV2 = { ssol: null, rdc: null, etage: null };
   let minimapStyle = 'schema'; // 'schema' | 'arch'
   let mmCanvas, mmCtx, mmTimer = 0;
+  let mmZoom = 1.0, mmPanX = 0, mmPanY = 0;
+  let mmDragging = false, mmDragMoved = false, mmDragStartX = 0, mmDragStartY = 0, mmPanStartX = 0, mmPanStartY = 0;
 
   // Exact uniform metric bounds (matches rendered 352x672 architect plans: 4 px/m!)
   const MM_XMIN = -66.0, MM_XMAX = 22.0, MM_ZMIN = -96.0, MM_ZMAX = 72.0;
@@ -4811,6 +4816,39 @@
       ((z - MM_ZMIN) / (MM_ZMAX - MM_ZMIN)) * mmCanvas.height
     ];
   }
+
+  function clampMinimapPan() {
+    if (!mmCanvas) return;
+    const minX = mmCanvas.width * (1 - mmZoom), minY = mmCanvas.height * (1 - mmZoom);
+    mmPanX = Math.max(minX, Math.min(0, mmPanX));
+    mmPanY = Math.max(minY, Math.min(0, mmPanY));
+  }
+
+  function applyMinimapZoom(newZoom, pivotX, pivotY) {
+    if (!mmCanvas) return;
+    const oldZoom = mmZoom;
+    mmZoom = Math.max(1.0, Math.min(5.5, newZoom));
+    if (mmZoom <= 1.01) { mmZoom = 1.0; mmPanX = 0; mmPanY = 0; }
+    else {
+      const px = (pivotX !== undefined) ? pivotX : (oldZoom <= 1.01 ? worldToMM(player.pos.x, player.pos.z)[0] : mmCanvas.width / 2);
+      const py = (pivotY !== undefined) ? pivotY : (oldZoom <= 1.01 ? worldToMM(player.pos.x, player.pos.z)[1] : mmCanvas.height / 2);
+      const mapX = (px - mmPanX) / oldZoom, mapY = (py - mmPanY) / oldZoom;
+      mmPanX = px - mapX * mmZoom;
+      mmPanY = py - mapY * mmZoom;
+      clampMinimapPan();
+    }
+    const lbl = document.getElementById('mm-zoom-val');
+    if (lbl) lbl.innerText = (Math.abs(mmZoom - Math.round(mmZoom)) < 0.05 ? Math.round(mmZoom) : mmZoom.toFixed(1)) + '×';
+    mmCanvas.style.cursor = mmZoom > 1.01 ? 'grab' : 'crosshair';
+    mmTimer = 99;
+  }
+
+  window.zoomMinimap = function(dir) {
+    applyMinimapZoom(dir > 0 ? mmZoom * 1.45 : mmZoom / 1.45);
+  };
+  window.resetMinimapZoom = function() {
+    applyMinimapZoom(1.0);
+  };
 
   function setupMinimap() {
     mmCanvas = document.getElementById('minimap-canvas');
@@ -4829,10 +4867,55 @@
         archImgsV2[k] = img2;
       }
     });
-    mmCanvas.addEventListener('click', e => {
+    // Wheel zoom directly over 2D Minimap (zooms smoothly toward cursor!)
+    mmCanvas.addEventListener('wheel', e => {
+      e.preventDefault(); e.stopPropagation();
       const rect = mmCanvas.getBoundingClientRect();
-      const px = (e.clientX - rect.left) * (mmCanvas.width / rect.width);
-      const py = (e.clientY - rect.top) * (mmCanvas.height / rect.height);
+      const cx = (e.clientX - rect.left) * (mmCanvas.width / rect.width);
+      const cy = (e.clientY - rect.top) * (mmCanvas.height / rect.height);
+      const factor = e.deltaY < 0 ? 1.24 : (1 / 1.24);
+      applyMinimapZoom(mmZoom * factor, cx, cy);
+    }, { passive: false });
+    // Drag-to-pan when zoomed in
+    mmCanvas.addEventListener('mousedown', e => {
+      if (mmZoom <= 1.01) { mmDragging = false; mmDragMoved = false; return; }
+      mmDragging = true; mmDragMoved = false;
+      mmDragStartX = e.clientX; mmDragStartY = e.clientY;
+      mmPanStartX = mmPanX; mmPanStartY = mmPanY;
+      mmCanvas.style.cursor = 'grabbing';
+      e.stopPropagation();
+    });
+    window.addEventListener('mousemove', e => {
+      if (!mmDragging) return;
+      const rect = mmCanvas.getBoundingClientRect();
+      const dx = e.clientX - mmDragStartX, dy = e.clientY - mmDragStartY;
+      if (Math.hypot(dx, dy) > 4) mmDragMoved = true;
+      mmPanX = mmPanStartX + dx * (mmCanvas.width / rect.width);
+      mmPanY = mmPanStartY + dy * (mmCanvas.height / rect.height);
+      clampMinimapPan();
+      mmTimer = 99;
+    });
+    window.addEventListener('mouseup', () => {
+      if (mmDragging) {
+        mmDragging = false;
+        mmCanvas.style.cursor = mmZoom > 1.01 ? 'grab' : 'crosshair';
+      }
+    });
+    mmCanvas.addEventListener('dblclick', e => {
+      e.preventDefault();
+      if (mmZoom > 1.01) applyMinimapZoom(1.0);
+      else {
+        const rect = mmCanvas.getBoundingClientRect();
+        applyMinimapZoom(2.5, (e.clientX - rect.left) * (mmCanvas.width / rect.width), (e.clientY - rect.top) * (mmCanvas.height / rect.height));
+      }
+    });
+    mmCanvas.addEventListener('click', e => {
+      if (mmDragMoved) { mmDragMoved = false; return; }
+      const rect = mmCanvas.getBoundingClientRect();
+      const cpx = (e.clientX - rect.left) * (mmCanvas.width / rect.width);
+      const cpy = (e.clientY - rect.top) * (mmCanvas.height / rect.height);
+      const px = (cpx - mmPanX) / mmZoom;
+      const py = (cpy - mmPanY) / mmZoom;
       const wx = MM_XMIN + (px / mmCanvas.width) * (MM_XMAX - MM_XMIN);
       const wz = MM_ZMIN + (py / mmCanvas.height) * (MM_ZMAX - MM_ZMIN);
       // Capture chosen floor BEFORE calling setMode/setFloorCut so setFloorCut('all') never reverts it!
@@ -4881,6 +4964,9 @@
   function drawMinimap() {
     const ctx = mmCtx, w = mmCanvas.width, h = mmCanvas.height;
     ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.translate(mmPanX, mmPanY);
+    ctx.scale(mmZoom, mmZoom);
 
     const activeArchImgs = (planVersion === 'v2') ? archImgsV2 : archImgs;
     if (minimapStyle === 'arch' && activeArchImgs[minimapFloor] && activeArchImgs[minimapFloor].complete) {
@@ -4962,16 +5048,18 @@
       }
     }
 
-    // Live Position Marker & Look Cone (High contrast on BOTH Dark Plan & White Architect Plan!)
+    // Live Position Marker & Look Cone (Constant crisp screen size at every zoom level!)
     const [ux, uy] = worldToMM(player.pos.x, player.pos.z);
+    const invZ = 1 / Math.sqrt(mmZoom);
     ctx.save(); ctx.translate(ux, uy);
     ctx.rotate(Math.atan2(-Math.cos(player.yaw), -Math.sin(player.yaw)));
     ctx.fillStyle = minimapStyle === 'arch' ? 'rgba(220, 38, 38, 0.34)' : 'rgba(234, 179, 8, 0.42)';
-    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 28, -0.5, 0.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 28 * invZ, -0.5, 0.5); ctx.closePath(); ctx.fill();
     ctx.restore();
     ctx.fillStyle = navMode === 'suv' ? '#2563eb' : (minimapStyle === 'arch' ? '#dc2626' : '#eab308');
-    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3.2;
-    ctx.beginPath(); ctx.arc(ux, uy, 8.2, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3.2 * invZ;
+    ctx.beginPath(); ctx.arc(ux, uy, 8.2 * invZ, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.restore();
   }
 
   // =========================================================================
