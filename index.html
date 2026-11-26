@@ -753,21 +753,44 @@
       }
     }, [1, 1], false);
 
-    // Afriquia Forecourt Warm Concrete Paving Blocks (Directly inspired by slide_interne.jpg!)
-    T.forecourt = makeTex(512, 512, (ctx, w, h) => {
-      ctx.fillStyle = '#bfb4a2'; ctx.fillRect(0, 0, w, h);
-      const cols = ['#c7bca9', '#c1b6a3', '#bab09c', '#cfc4b2'];
-      const bw = 32, bh = 16;
-      for (let y = 0; y < h; y += bh) {
-        const off = ((y / bh) % 2) * (bw / 2);
-        for (let x = -bw; x < w + bw; x += bw) {
-          ctx.fillStyle = cols[((x + y * 3) >>> 4) & 3];
-          ctx.fillRect(x + off + 1, y + 1, bw - 2, bh - 2);
-        }
+    // Afriquia Forecourt — Authentic Architectural Béton Ciré (Smooth Hand-Troweled Polished Concrete!)
+    T.forecourt = makeTex(1024, 1024, (ctx, w, h) => {
+      ctx.fillStyle = '#c4c1ba'; ctx.fillRect(0, 0, w, h);
+      const clouds = [
+        ['rgba(218,215,208,0.28)', 180], ['rgba(164,160,152,0.20)', 160],
+        ['rgba(206,203,196,0.24)', 130], ['rgba(148,144,137,0.16)', 120]
+      ];
+      for (let i = 0; i < 85; i++) {
+        const [col, rad] = clouds[i % clouds.length];
+        const cx = ((i * 197 + 73) % w), cy = ((i * 311 + 41) % h);
+        const r = rad * (0.55 + ((i * 37) % 100) / 140);
+        [-w, 0, w].forEach(ox => [-h, 0, h].forEach(oy => {
+          const gx = cx + ox, gy = cy + oy;
+          if (gx < -r || gx > w + r || gy < -r || gy > h + r) return;
+          const gr = ctx.createRadialGradient(gx, gy, r * 0.12, gx, gy, r);
+          gr.addColorStop(0, col);
+          gr.addColorStop(1, 'rgba(196,193,186,0)');
+          ctx.fillStyle = gr;
+          ctx.beginPath(); ctx.arc(gx, gy, r, 0, Math.PI * 2); ctx.fill();
+        }));
       }
-      for (let i = 0; i < 6000; i++) {
-        ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.06)' : 'rgba(60,52,40,0.06)';
-        ctx.fillRect(Math.random()*w, Math.random()*h, 2, 2);
+      ctx.lineWidth = 18;
+      for (let i = 0; i < 42; i++) {
+        const x1 = (i * 149) % w, y1 = (i * 223) % h;
+        ctx.strokeStyle = i % 2 === 0 ? 'rgba(232,229,223,0.08)' : 'rgba(130,126,119,0.06)';
+        ctx.beginPath(); ctx.arc(x1, y1, 65 + (i % 45), (i % 6) * 0.5, (i % 6) * 0.5 + 1.4); ctx.stroke();
+      }
+      for (let i = 0; i < 14000; i++) {
+        ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,252,0.045)' : 'rgba(90,86,80,0.04)';
+        ctx.fillRect(Math.random() * w, Math.random() * h, 1.6, 1.6);
+      }
+      const step = w / 2;
+      for (let k = 0; k < 2; k++) {
+        const pos = k * step;
+        ctx.fillStyle = 'rgba(82,79,74,0.42)';
+        ctx.fillRect(0, pos, w, 2.5); ctx.fillRect(pos, 0, 2.5, h);
+        ctx.fillStyle = 'rgba(240,238,233,0.30)';
+        ctx.fillRect(0, pos + 2.5, w, 1.5); ctx.fillRect(pos + 2.5, 0, 1.5, h);
       }
     });
 
@@ -900,7 +923,7 @@
 
     const M = {
       asphalt:      new THREE.MeshStandardMaterial({ map: T.asphalt, bumpMap: T.asphaltBump, bumpScale: 0.04, roughness: 0.88, metalness: 0.05 }),
-      forecourt:    new THREE.MeshStandardMaterial({ map: T.forecourt, bumpMap: T.stuccoBump, bumpScale: 0.028, roughness: 0.80, metalness: 0.03 }),
+      forecourt:    new THREE.MeshStandardMaterial({ map: T.forecourt, bumpMap: T.stuccoBump, bumpScale: 0.008, roughness: 0.34, metalness: 0.08 }),
       earth:        new THREE.MeshStandardMaterial({ map: T.earth, roughness: 0.97 }),
       pavers:       new THREE.MeshStandardMaterial({ map: T.pavers, bumpMap: T.stuccoBump, bumpScale: 0.025, roughness: 0.82 }),
       balconyTile:  new THREE.MeshStandardMaterial({ map: T.balconyTile, roughness: 0.45, metalness: 0.10 }),
@@ -2322,7 +2345,7 @@
     B.addBox(-460.0, -0.35, 53.55,  -12.2, -0.22, 60.85, earthMat, { uvScale: 0.08 }); // West of L-Wing
 
     // Site Paving: Warm Concrete Forecourt Blocks under Afriquia Station (like slide_interne.jpg!) + Weathered Asphalt in Parking & Driveways!
-    B.addBox(-32.0, -0.18, -63.5, 14.0, -0.015, -28.0, M.forecourt, { uvScale: 0.28 }); // Afriquia Forecourt Paving!
+    B.addBox(-32.0, -0.18, -63.5, 14.0, -0.015, -28.0, M.forecourt, { uvScale: 0.16 }); // Afriquia Béton Ciré Forecourt!
     B.addBox(-32.0, -0.18, -28.0, 0.0, -0.02, 53.6, M.asphalt, { uvScale: 0.16 });
     B.addBox(0.0, -0.18, -28.0, 14.0, -0.02, 0.0, M.asphalt, { uvScale: 0.16 });
     B.addBox(8.3, -0.18, 0.0, 14.0, -0.02, 67.5, M.asphalt, { uvScale: 0.16 }); // Clear East Circulation Lane!
