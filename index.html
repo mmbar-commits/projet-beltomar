@@ -393,7 +393,7 @@
     <button class="mm-style-btn" id="mm-zoom-val" style="flex:0 0 34px;padding:3px 0;" onclick="resetMinimapZoom()" title="Réinitialiser le zoom (1×)">1×</button>
     <button class="mm-style-btn" style="flex:0 0 24px;padding:3px 0;" onclick="zoomMinimap(1)" title="Zoomer sur le plan 2D">+</button>
   </div>
-  <canvas id="minimap-canvas" width="352" height="672"></canvas>
+  <canvas id="minimap-canvas" width="1056" height="2016"></canvas>
   <div class="mm-hint">Clic : téléporter · Molette / +− : zoomer · Glisser : déplacer</div>
 </div>
 
@@ -4827,7 +4827,7 @@
   function applyMinimapZoom(newZoom, pivotX, pivotY) {
     if (!mmCanvas) return;
     const oldZoom = mmZoom;
-    mmZoom = Math.max(1.0, Math.min(5.5, newZoom));
+    mmZoom = Math.max(1.0, Math.min(8.0, newZoom));
     if (mmZoom <= 1.01) { mmZoom = 1.0; mmPanX = 0; mmPanY = 0; }
     else {
       const px = (pivotX !== undefined) ? pivotX : (oldZoom <= 1.01 ? worldToMM(player.pos.x, player.pos.z)[0] : mmCanvas.width / 2);
@@ -4866,6 +4866,13 @@
         img2.src = ARCH_PLAN_DATA_V2[k];
         archImgsV2[k] = img2;
       }
+      // Upgrade seamlessly to Ultra-HD 2112x4032 vector-rendered PDF plans (razor-sharp up to 8x zoom!)
+      const hd1 = new Image();
+      hd1.onload = () => { archImgs[k] = hd1; mmTimer = 99; };
+      hd1.src = `assets/plans/v1_${k}.jpg`;
+      const hd2 = new Image();
+      hd2.onload = () => { archImgsV2[k] = hd2; mmTimer = 99; };
+      hd2.src = `assets/plans/v2_${k}.jpg`;
     });
     // Wheel zoom directly over 2D Minimap (zooms smoothly toward cursor!)
     mmCanvas.addEventListener('wheel', e => {
@@ -4962,8 +4969,10 @@
   };
 
   function drawMinimap() {
-    const ctx = mmCtx, w = mmCanvas.width, h = mmCanvas.height;
+    const ctx = mmCtx, w = mmCanvas.width, h = mmCanvas.height, S = w / 352;
     ctx.clearRect(0, 0, w, h);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.save();
     ctx.translate(mmPanX, mmPanY);
     ctx.scale(mmZoom, mmZoom);
@@ -4982,7 +4991,7 @@
       const rectW = (x1, z1, x2, z2, fill, stroke) => {
         const [px1, py1] = worldToMM(x1, z1), [px2, py2] = worldToMM(x2, z2);
         if (fill) { ctx.fillStyle = fill; ctx.fillRect(px1, py1, px2 - px1, py2 - py1); }
-        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.strokeRect(px1, py1, px2 - px1, py2 - py1); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2 * S; ctx.strokeRect(px1, py1, px2 - px1, py2 - py1); }
       };
 
       if (roadMode === 'actuel') {
@@ -5027,20 +5036,20 @@
           rectW(-6.75, 45.75, -2.75, 48.8, 'rgba(16,185,129,0.78)', '#6ee7b7');   // Escalier Secours Sud
           [[7.78,22],[7.78,31.3],[7.78,40.6],[7.78,49.9],[0.55,53.95],[-6.5,60.2]].forEach(([wx,wz]) => {
             const [cx, cy] = worldToMM(wx, wz);
-            ctx.fillStyle = '#38bdf8'; ctx.beginPath(); ctx.arc(cx, cy, 4.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#38bdf8'; ctx.beginPath(); ctx.arc(cx, cy, 4.5 * S, 0, Math.PI * 2); ctx.fill();
           });
         }
       }
 
-      ctx.fillStyle = '#e2e8f0'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
-      if (roadMode === 'actuel') { const [rx, ry] = worldToMM(-22, -78); ctx.fillText('P3014 (30m)', rx, ry + 5); }
+      ctx.fillStyle = '#e2e8f0'; ctx.font = `bold ${Math.round(16 * S)}px sans-serif`; ctx.textAlign = 'center';
+      if (roadMode === 'actuel') { const [rx, ry] = worldToMM(-22, -78); ctx.fillText('P3014 (30m)', rx, ry + 5 * S); }
       else {
-        const [rx, ry] = worldToMM(-14, -82); ctx.fillText('P3014 (60m)', rx, ry + 5);
-        const [ox, oy] = worldToMM(-47, 10); ctx.fillText('OA65', ox, oy); ctx.fillText('(30m)', ox, oy + 18);
+        const [rx, ry] = worldToMM(-14, -82); ctx.fillText('P3014 (60m)', rx, ry + 5 * S);
+        const [ox, oy] = worldToMM(-47, 10); ctx.fillText('OA65', ox, oy); ctx.fillText('(30m)', ox, oy + 18 * S);
       }
       if (minimapFloor === 'rdc') {
-        const [ax, ay] = worldToMM(-11.5, -43.5); ctx.fillText('Afriquia', ax, ay + 5);
-        const [sx, sy] = worldToMM(-1.5, -17); ctx.fillText('M.Brahim', sx, sy + 5);
+        const [ax, ay] = worldToMM(-11.5, -43.5); ctx.fillText('Afriquia', ax, ay + 5 * S);
+        const [sx, sy] = worldToMM(-1.5, -17); ctx.fillText('M.Brahim', sx, sy + 5 * S);
       } else if (minimapFloor === 'ssol') {
         const [dx, dy] = worldToMM(4, 9); ctx.fillText('D.Kit', dx, dy);
       } else {
@@ -5050,7 +5059,7 @@
 
     // Live Position Marker & Look Cone (Constant crisp screen size at every zoom level!)
     const [ux, uy] = worldToMM(player.pos.x, player.pos.z);
-    const invZ = 1 / Math.sqrt(mmZoom);
+    const invZ = S / Math.sqrt(mmZoom);
     ctx.save(); ctx.translate(ux, uy);
     ctx.rotate(Math.atan2(-Math.cos(player.yaw), -Math.sin(player.yaw)));
     ctx.fillStyle = minimapStyle === 'arch' ? 'rgba(220, 38, 38, 0.34)' : 'rgba(234, 179, 8, 0.42)';
